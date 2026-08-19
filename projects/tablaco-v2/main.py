@@ -63,6 +63,7 @@ corner    = float(PARAM(lambda: corner, 1.5))       # outer vertical edge fillet
 rows      = int(PARAM(lambda: rows, 8))             # panel rows (canonical 8)
 cols      = int(PARAM(lambda: cols, 8))             # panel columns (canonical 8)
 connective = str(PARAM(lambda: connective, "and"))  # operator key: and|or|implies|iff|not
+notation  = str(PARAM(lambda: notation, "vf"))      # glyph set: "vf" (V/F) or "10" (1/0)
 
 # Clamps — extreme UI values must still build watertight and printable.
 cell = max(12.0, min(cell, 30.0))
@@ -73,6 +74,13 @@ rows = max(1, min(rows, 8))
 cols = max(1, min(cols, 8))
 if connective not in ("and", "or", "implies", "iff", "not"):
     connective = "and"
+if notation not in ("vf", "10"):
+    notation = "vf"
+
+# Rail segment length — client decision 2026-08-18: "5cm is the rail length".
+# A column longer than one segment couples segments end-to-end (spigot into
+# socket); three segments span the canonical 8-row stack (~148mm).
+RAIL_SEG = 50.0
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Derived dimensions (v1 scale-clamp system; never exposed)
@@ -200,6 +208,42 @@ def glyph_F(y_face, depth):
     return spine.union(top).union(mid)
 
 
+def glyph_1(y_face, depth):
+    """Sunken '1': a single vertical bar + short flag. Same tactile channel as V
+    (true = inside) so the fingertip rule and the operator key stay unchanged."""
+    gh = cell * 0.44
+    w = max(1.5, cell * 0.09)
+    yc = y_face - depth / 2.0 + EPS
+    bar = _stroke(0.0, gh / 2.0, 0.0, -gh / 2.0, w, yc, depth + 0.2)
+    flag = _stroke(-cell * 0.10, gh / 2.0 - cell * 0.10, 0.0, gh / 2.0, w, yc, depth + 0.2)
+    return bar.union(flag)
+
+
+def glyph_0(y_face, depth):
+    """Raised '0': an oval ring. Same tactile channel as F (false = outside)."""
+    rx = cell * 0.16
+    rz = cell * 0.22
+    w = max(1.5, cell * 0.09)
+    yc = y_face - depth / 2.0
+    n = 24
+    ring = None
+    for k in range(n):
+        a0 = 2 * math.pi * k / n
+        a1 = 2 * math.pi * (k + 1) / n
+        seg = _stroke(rx * math.sin(a0), rz * math.cos(a0),
+                      rx * math.sin(a1), rz * math.cos(a1), w, yc, depth)
+        ring = seg if ring is None else ring.union(seg)
+    return ring
+
+
+def glyph_true(y_face, depth):
+    return glyph_V(y_face, depth) if notation == "vf" else glyph_1(y_face, depth)
+
+
+def glyph_false(y_face, depth):
+    return glyph_F(y_face, depth) if notation == "vf" else glyph_0(y_face, depth)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # The half-shell — complete, self-mating (dual-U), snap-fit, stackable
 # ══════════════════════════════════════════════════════════════════════════════
@@ -296,11 +340,13 @@ def half_shell(kind="v"):
     except Exception:
         pass
 
-    # 8) Glyph — V sunken on the white half, F raised on the dark half.
+    # 8) Glyph — true-glyph sunken on the white half, false-glyph raised on the
+    #    dark half (V/F or 1/0 per the notation param; channel semantics fixed:
+    #    true = inside, false = outside — Decision #15).
     if kind == "v":
-        body = body.cut(glyph_V(half_y, glyph, sunken=True))
+        body = body.cut(glyph_true(half_y, glyph))
     else:
-        body = body.union(glyph_F(half_y + glyph, glyph))
+        body = body.union(glyph_false(half_y + glyph, glyph))
 
     return body
 
@@ -313,26 +359,60 @@ def cell_f_positioned():
 # ══════════════════════════════════════════════════════════════════════════════
 # Rail — notched (sketch decision #2's detent hardware)
 # ══════════════════════════════════════════════════════════════════════════════
-def rail(n_cells):
-    """Vertical rail: cylinder with shallow annular detent notches at cell pitch
-    and a foot spigot that plants into the board."""
-    length = n_cells * cell + crown_h + 2.0
+def rail_segment(first=True, last=True, notch_zs=None):
+    """One 50mm rail segment (the printed/sold part — client decision: 5cm).
+
+    Couplers: a male spigot on top (unless `last`) presses into the female
+    socket bored in the next segment's base (unless `first`, whose base keeps
+    the board press-fit spigot instead). Detent notches are cut at the local
+    heights in `notch_zs`.
+    """
     r = rod_d / 2.0
-    body = cq.Workplane("XY").circle(r).extrude(length)
-    notch_d = max(0.25, 0.3 * S)
-    for k in range(n_cells + 1):
-        z = k * cell + crown_h / 2.0
-        groove = (_annulus(r + EPS, r - notch_d, max(0.6, 0.8 * S))
-                  .translate((0, 0, z)))
-        body = body.cut(groove)
-    try:
-        body = body.faces(">Z").chamfer(min(0.8, r * 0.5))
-    except Exception:
-        pass
-    # foot spigot (press-fits the board socket — interference from the dial)
-    spigot = cq.Workplane("XY").circle(r + 0.15 + 0.15 * tightness).extrude(-3.0)
-    body = body.union(spigot)
-    return body.translate((0, 0, -(n_cells * cell) / 2.0))
+    cup_r = max(1.1, rod_d * 0.30)
+    cup_h = 2.6
+    body = cq.Workplane("XY").circle(r).extrude(RAIL_SEG)
+    for z in (notch_zs or []):
+        if 0.5 < z < RAIL_SEG - 0.5:
+            notch_d = max(0.25, 0.3 * S)
+            body = body.cut(_annulus(r + EPS, r - notch_d, max(0.6, 0.8 * S))
+                            .translate((0, 0, z)))
+    if last:
+        try:
+            body = body.faces(">Z").chamfer(min(0.8, r * 0.5))
+        except Exception:
+            pass
+    else:  # male coupler spigot up
+        spigot = (cq.Workplane("XY").circle(cup_r - mate_clear / 2.0)
+                  .extrude(cup_h).translate((0, 0, RAIL_SEG)))
+        try:
+            spigot = spigot.faces(">Z").chamfer(min(0.5, cup_r * 0.4))
+        except Exception:
+            pass
+        body = body.union(spigot)
+    if first:  # board press-fit foot (interference from the tightness dial)
+        foot_sp = cq.Workplane("XY").circle(r + 0.15 + 0.15 * tightness).extrude(-3.0)
+        body = body.union(foot_sp)
+    else:  # female coupler socket in the base
+        body = body.cut(cq.Workplane("XY").circle(cup_r + mate_clear / 2.0)
+                        .extrude(cup_h + 0.2))
+    return body
+
+
+def rail(n_cells):
+    """A full column: 50mm segments coupled end-to-end to span n_cells cubes.
+    Notch heights are computed globally so the detent pitch stays true across
+    segment joints."""
+    length = n_cells * cell + crown_h + 2.0
+    n_segs = max(1, int(math.ceil(length / RAIL_SEG)))
+    global_notches = [k * cell + crown_h / 2.0 for k in range(n_cells + 1)]
+    col = None
+    for j in range(n_segs):
+        z0 = j * RAIL_SEG
+        local = [z - z0 for z in global_notches if z0 - 0.5 <= z < z0 + RAIL_SEG + 0.5]
+        seg = rail_segment(first=(j == 0), last=(j == n_segs - 1), notch_zs=local)
+        seg = seg.translate((0, 0, z0))
+        col = seg if col is None else col.union(seg)
+    return col.translate((0, 0, -(n_cells * cell) / 2.0))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

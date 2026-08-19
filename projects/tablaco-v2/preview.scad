@@ -10,11 +10,12 @@
 
 $fn = 24;
 
-cell   = 18.0;   // cube edge (mm)
-rows   = 8;      // panel rows
-cols   = 8;      // panel columns
-corner = 1.5;    // vertical edge rounding (approximated by chamfer here)
-glyph  = 1.2;    // V sink / F relief (mm)
+cell     = 18.0;   // cube edge (mm)
+rows     = 8;      // panel rows
+cols     = 8;      // panel columns
+corner   = 1.5;    // vertical edge rounding (approximated by chamfer here)
+glyph    = 1.2;    // V sink / F relief (mm)
+notation = "vf";   // "vf" (V/F) or "10" (1/0)
 
 rod_d   = max(3.0, min(cell * 0.28, 8.0));
 margin  = cell * 0.8;
@@ -42,18 +43,35 @@ module preview_cube(state) {  // state: 0=V (glyph front), 1=F, 2=neutral(45°)
 
 module v_glyph_cut() {
     gw = cell * 0.40; gh = cell * 0.44;
-    for (s = [-1, 1])
-        translate([s * gw/4, -glyph/2, 0])
-            rotate([0, s * atan2(gw/2, gh), 0])
-                cube([stroke, glyph + 0.2, sqrt(pow(gw/2,2) + pow(gh,2))], center = true);
+    if (notation == "10") {
+        // sunken '1'
+        translate([0, -glyph/2, 0]) cube([stroke, glyph + 0.2, gh], center = true);
+        translate([-cell*0.05, -glyph/2, gh/2 - cell*0.05])
+            rotate([0, 45, 0]) cube([stroke, glyph + 0.2, cell*0.14], center = true);
+    } else {
+        for (s = [-1, 1])
+            translate([s * gw/4, -glyph/2, 0])
+                rotate([0, s * atan2(gw/2, gh), 0])
+                    cube([stroke, glyph + 0.2, sqrt(pow(gw/2,2) + pow(gh,2))], center = true);
+    }
 }
 
 module f_glyph() {
     gw = cell * 0.32; gh = cell * 0.44;
-    translate([0, -glyph/2, 0]) {
-        translate([-gw/2 + stroke/2, 0, 0]) cube([stroke, glyph, gh], center = true);
-        translate([0, 0, gh/2 - stroke/2]) cube([gw, glyph, stroke], center = true);
-        translate([-gw/2 + gw*0.3, 0, 0])  cube([gw*0.6, glyph, stroke], center = true);
+    if (notation == "10") {
+        // raised '0' — oval ring
+        translate([0, -glyph/2, 0]) rotate([90, 0, 0])
+            scale([1, cell*0.22/(cell*0.16), 1])
+                difference() {
+                    cylinder(h = glyph, r = cell*0.16 + stroke/2, center = true);
+                    cylinder(h = glyph + 0.2, r = cell*0.16 - stroke/2, center = true);
+                }
+    } else {
+        translate([0, -glyph/2, 0]) {
+            translate([-gw/2 + stroke/2, 0, 0]) cube([stroke, glyph, gh], center = true);
+            translate([0, 0, gh/2 - stroke/2]) cube([gw, glyph, stroke], center = true);
+            translate([-gw/2 + gw*0.3, 0, 0])  cube([gw*0.6, glyph, stroke], center = true);
+        }
     }
 }
 

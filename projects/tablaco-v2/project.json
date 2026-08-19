@@ -2,7 +2,7 @@
   "project": {
     "name": "Tablaco v2",
     "slug": "tablaco-v2",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "engine": "cadquery",
     "difficulty": "intermediate",
     "thumbnail": "/logo.png",
@@ -139,8 +139,8 @@
     {
       "id": "rod",
       "label": {
-        "en": "Notched rail",
-        "es": "Riel con muescas"
+        "en": "Rail segment (50 mm)",
+        "es": "Segmento de riel (50 mm)"
       },
       "render_mode": 0,
       "color": "#8b9099"
@@ -308,6 +308,42 @@
       "tooltip": {
         "en": "Depth of the sunken V / height of the raised F — also the key's probe depth",
         "es": "Profundidad de la V hundida / altura de la F — tambien la profundidad de sonda de la llave"
+      }
+    },
+    {
+      "id": "notation",
+      "type": "select",
+      "default": "vf",
+      "options": [
+        {
+          "value": "vf",
+          "label": {
+            "en": "V / F",
+            "es": "V / F"
+          }
+        },
+        {
+          "value": "10",
+          "label": {
+            "en": "1 / 0",
+            "es": "1 / 0"
+          }
+        }
+      ],
+      "group": "cell",
+      "modes": [
+        "unit",
+        "shell",
+        "panel",
+        "preview"
+      ],
+      "label": {
+        "en": "Notation",
+        "es": "Notacion"
+      },
+      "tooltip": {
+        "en": "Glyph set (Decision #15). The tactile channel is fixed either way: true = sunken, false = raised",
+        "es": "Juego de glifos (Decision #15). El canal tactil no cambia: verdadero = hundido, falso = en relieve"
       }
     },
     {
