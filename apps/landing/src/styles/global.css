@@ -19,6 +19,14 @@
     [id] {
         scroll-margin-top: 3.5rem;
     }
+    /* Still mode also serves low-memory, single-core and Save-Data devices.
+       Keep decorative CSS loops off as well as the 3D stage. User-triggered
+       hover/focus transitions remain available. */
+    html[data-tier='still'] main *,
+    html[data-tier='still'] main *::before,
+    html[data-tier='still'] main *::after {
+        animation: none !important;
+    }
 }
 
 @layer utilities {

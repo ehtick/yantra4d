@@ -32,6 +32,26 @@ const durationSec = Math.max(30, list.length * MARQUEE_SECONDS_PER_PLATFORM);
     </button>
   </div>
 </div>
+<style is:global>
+  /* The low-resource tier uses the same manually scrollable links as reduced
+     motion. Keep this host policy out of the shared React presentation. */
+  html[data-tier='still'] .madfam-eco-banner,
+  html[data-tier='still'] .madfam-eco-banner__track {
+    animation: none;
+  }
+  html[data-tier='still'] .madfam-eco-banner__track {
+    will-change: auto;
+  }
+  html[data-tier='still'] .madfam-eco-banner__viewport {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(71 85 105) transparent;
+    mask-image: none;
+  }
+  html[data-tier='still'] .madfam-eco-banner__item[aria-hidden='true'] {
+    display: none;
+  }
+</style>
 <script>
   import { wireEcosystemBanner } from '../lib/ecosystem-banner';
   document.querySelectorAll<HTMLElement>('[data-ecosystem-banner]').forEach(wireEcosystemBanner);
