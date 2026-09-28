@@ -165,7 +165,20 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
   const [manifest, setManifest] = useState<Manifest>(fallbackManifest as Manifest)
   const [projects, setProjects] = useState<ProjectListItem[]>([])
   const [projectSlug, setProjectSlug] = useState<string | null>(() => _getProjectSlug(location))
-  const [loading, setLoading] = useState(true)
+  const routeSlug = _getProjectSlug(location)
+  const [previousRouteSlug, setPreviousRouteSlug] = useState(routeSlug)
+  const [settledRequest, setSettledRequest] = useState<{
+    slug: string; signedIn: boolean
+  } | null>(null)
+  const loading = Boolean(projectSlug) && (
+    settledRequest?.slug !== projectSlug || settledRequest?.signedIn !== signedIn
+  )
+  // Synchronize route identity before children render, without an effect that
+  // briefly exposes the previous project's state after navigation.
+  if (routeSlug !== previousRouteSlug) {
+    setPreviousRouteSlug(routeSlug)
+    setProjectSlug(routeSlug)
+  }
   const [manifestError, setManifestError] = useState<ManifestErrorKind | null>(null)
   const [manifestAuthRequired, setManifestAuthRequired] = useState(false)
   // Discovery is optional for a direct project URL. A slow or unavailable
@@ -195,13 +208,9 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
 
   // Fetch the requested manifest independently from catalogue discovery.
   useEffect(() => {
-    if (!projectSlug) {
-      setLoading(false)
-      return
-    }
+    if (!projectSlug) return
 
     const controller = new AbortController()
-    setLoading(true)
     const url = `${getApiBase()}/api/projects/${encodeURIComponent(projectSlug)}/manifest`
 
     apiFetch(url, { signal: controller.signal })
@@ -223,7 +232,7 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
             setManifestAuthRequired(false)
             setManifestError('manifest_load_failed')
           }
-          setLoading(false)
+          setSettledRequest({ slug: projectSlug, signedIn })
           return undefined
         }
         return res.json()
@@ -233,7 +242,7 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
           setManifestError(null)
           setManifestAuthRequired(false)
           setManifest(data)
-          setLoading(false)
+          setSettledRequest({ slug: projectSlug, signedIn })
         }
       })
       .catch((err) => {
@@ -241,22 +250,13 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
         console.warn('Manifest fetch failed:', err)
         setManifestAuthRequired(false)
         setManifestError('network_error')
-        setLoading(false)
+        setSettledRequest({ slug: projectSlug, signedIn })
       })
 
     return () => controller.abort()
     // `signedIn` is a dependency so that a successful sign-in re-fetches the
     // manifest: a project that answered 403 while anonymous may now be allowed.
   }, [projectSlug, signedIn])
-
-  // Listen for location changes to detect cross-project navigation
-  useEffect(() => {
-    const newSlug = _getProjectSlug(location)
-    if (newSlug && newSlug !== projectSlug) {
-
-      setProjectSlug(newSlug)
-    }
-  }, [location, projectSlug])
 
   // ready = manifest has loaded and matches the requested project
   const ready = !loading && manifest.project?.slug === projectSlug

@@ -4,13 +4,15 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { ManifestProvider, useManifest } from './ManifestProvider'
 import fallbackManifest from '../../config/fallback-manifest'
 
+const route = vi.hoisted(() => ({ pathname: '/project/gridfinity', hash: '' }))
 vi.mock('react-router-dom', () => ({
-  useLocation: () => ({ pathname: '/project/gridfinity', hash: '' }),
+  useLocation: () => route,
   useNavigate: () => vi.fn()
 }))
 
 // Mock fetch so the provider doesn't hit the network
 beforeEach(() => {
+  route.pathname = '/project/gridfinity'
   vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('no backend'))))
 })
 
@@ -90,6 +92,36 @@ describe('ManifestProvider', () => {
     await waitFor(() => expect(screen.getByTestId('ready')).toHaveTextContent('true'))
     expect(screen.getByTestId('manifest-error')).toBeEmptyDOMElement()
     expect(screen.getByTestId('project-slug')).toHaveTextContent('gridfinity')
+  })
+
+  it('preserves another project slug when catalogue discovery fails', async () => {
+    route.pathname = '/project/other'
+    vi.stubGlobal('fetch', vi.fn((url) => url.endsWith('/api/projects')
+      ? Promise.reject(new Error('Catalog unavailable'))
+      : Promise.resolve({ ok: true, json: async () => ({
+        ...fallbackManifest, project: { ...fallbackManifest.project, slug: 'other' },
+      }) })))
+    render(<ManifestProvider><TestConsumer /></ManifestProvider>)
+    await waitFor(() => expect(screen.getByTestId('ready')).toHaveTextContent('true'))
+    expect(screen.getByTestId('project-slug')).toHaveTextContent('other')
+    expect(fetch.mock.calls.map(([url]) => url)).toContainEqual(
+      expect.stringContaining('/api/projects/other/manifest'))
+  })
+
+  it('loads the new manifest after cross-project navigation', async () => {
+    vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve({ ok: true, json: async () =>
+      url.endsWith('/api/projects') ? [] : ({
+        ...fallbackManifest, project: { ...fallbackManifest.project,
+          slug: url.includes('/other/') ? 'other' : 'gridfinity' },
+      }) })))
+    const { rerender } = render(<ManifestProvider><TestConsumer /></ManifestProvider>)
+    await waitFor(() => expect(screen.getByTestId('ready')).toHaveTextContent('true'))
+    route.pathname = '/project/other'
+    rerender(<ManifestProvider><TestConsumer /></ManifestProvider>)
+    await waitFor(() => {
+      expect(screen.getByTestId('project-slug')).toHaveTextContent('other')
+      expect(screen.getByTestId('ready')).toHaveTextContent('true')
+    })
   })
 
   it('provides fallback manifest data', async () => {
