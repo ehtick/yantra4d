@@ -1,0 +1,58 @@
+---
+// Static hosts need links and dismissal, not an eager React runtime. Share the
+// vendored platform/style contract so the Astro and React hosts stay aligned.
+import { DEFAULT_ECOSYSTEM_PLATFORMS } from './vendor/ecosystem-banner/platforms';
+import { BANNER_STYLES, MARQUEE_SECONDS_PER_PLATFORM } from './vendor/ecosystem-banner/presentation';
+const list = DEFAULT_ECOSYSTEM_PLATFORMS.filter(p => p.keyword && p.name && p.url);
+const track = [...list, ...list];
+const durationSec = Math.max(30, list.length * MARQUEE_SECONDS_PER_PLATFORM);
+---
+<style is:global set:html={BANNER_STYLES} />
+<div hidden data-ecosystem-banner role="complementary"
+  aria-label={`MADFAM ecosystem ticker: ${list.map(p => p.name).join(', ')}`}
+  data-testid="ecosystem-banner" class="madfam-eco-banner"
+  style={`--madfam-marquee-duration: ${durationSec}s`}>
+  <div class="madfam-eco-banner__inner">
+    <span aria-hidden="true" class="madfam-eco-banner__label">MADFAM ECOSYSTEM</span>
+    <span aria-hidden="true" class="madfam-eco-banner__separator">/</span>
+    <div class="madfam-eco-banner__viewport"><div class="madfam-eco-banner__track">
+      {track.map((platform, index) => (
+        <a href={platform.url} target="_blank" rel="noopener noreferrer"
+          title={`${platform.keyword}: ${platform.name}`} class="madfam-eco-banner__item"
+          aria-hidden={index >= list.length ? 'true' : undefined}
+          tabindex={index >= list.length ? -1 : undefined}>
+          <span class="madfam-eco-banner__keyword">{platform.keyword}:</span>
+          <span class="madfam-eco-banner__name">{platform.name}</span>
+          <span class="madfam-eco-banner__external">↗</span>
+        </a>
+      ))}
+    </div></div>
+    <button type="button" aria-label="Dismiss MADFAM ecosystem ticker" class="madfam-eco-banner__dismiss">
+      <span aria-hidden="true" class="madfam-eco-banner__dismiss-glyph">×</span>
+    </button>
+  </div>
+</div>
+<style is:global>
+  /* The low-resource tier uses the same manually scrollable links as reduced
+     motion. Keep this host policy out of the shared React presentation. */
+  html[data-tier='still'] .madfam-eco-banner,
+  html[data-tier='still'] .madfam-eco-banner__track {
+    animation: none;
+  }
+  html[data-tier='still'] .madfam-eco-banner__track {
+    will-change: auto;
+  }
+  html[data-tier='still'] .madfam-eco-banner__viewport {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(71 85 105) transparent;
+    mask-image: none;
+  }
+  html[data-tier='still'] .madfam-eco-banner__item[aria-hidden='true'] {
+    display: none;
+  }
+</style>
+<script>
+  import { wireEcosystemBanner } from '../lib/ecosystem-banner';
+  document.querySelectorAll<HTMLElement>('[data-ecosystem-banner]').forEach(wireEcosystemBanner);
+</script>
