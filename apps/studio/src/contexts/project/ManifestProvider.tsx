@@ -155,7 +155,7 @@ interface ManifestProviderProps {
 
 const ManifestContext = createContext<ManifestContextValue | undefined>(undefined)
 
-const PROJECTS_FETCH_TIMEOUT_MS = 2000
+const PROJECTS_FETCH_TIMEOUT_MS = 10000
 
 export function ManifestProvider({ children }: ManifestProviderProps) {
   const location = useLocation()
@@ -168,52 +168,41 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
   const [loading, setLoading] = useState(true)
   const [manifestError, setManifestError] = useState<ManifestErrorKind | null>(null)
   const [manifestAuthRequired, setManifestAuthRequired] = useState(false)
-  // Track whether the projects list has been fetched (or failed).
-  // The manifest fetch must wait for this so it can use the correct endpoint.
-  const [projectsResolved, setProjectsResolved] = useState(false)
-
-  // Fetch projects list on mount
+  // Discovery is optional for a direct project URL. A slow or unavailable
+  // catalogue must not change the requested slug or delay its manifest.
   useEffect(() => {
-    apiFetch(`${getApiBase()}/api/projects`, { signal: AbortSignal.timeout(PROJECTS_FETCH_TIMEOUT_MS) })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), PROJECTS_FETCH_TIMEOUT_MS)
+    let active = true
+    apiFetch(`${getApiBase()}/api/projects`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
       .then((data) => {
-        setProjects(data)
-        // Determine initial project from URL location
-        const foundSlug = _getProjectSlug(location)
-        const listedSlug = data.find((p: ProjectListItem) => p.slug === foundSlug)?.slug
-        if (listedSlug) {
-          setProjectSlug(listedSlug)
-        } else if (foundSlug) {
-          // Slug from URL not in public list (may be unlisted) — try it anyway
-          setProjectSlug(foundSlug)
-        } else {
-          // No project in URL at all
-          setProjectSlug(null)
-          setLoading(false)
-        }
-        setProjectsResolved(true)
+        if (active) setProjects(data)
       })
       .catch((err) => {
-        console.warn('Projects fetch failed, using fallback:', err)
-        setProjectSlug(fallbackManifest.project.slug)
-        setProjectsResolved(true)
-        setLoading(false)
+        if (active) console.warn('Projects fetch failed, using fallback:', err)
       })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .finally(() => clearTimeout(timeout))
+    return () => {
+      active = false
+      clearTimeout(timeout)
+      controller.abort()
+    }
   }, [])
 
-  // Fetch manifest when projectSlug changes — only after projects list resolves
+  // Fetch the requested manifest independently from catalogue discovery.
   useEffect(() => {
-    if (!projectSlug || !projectsResolved) return
+    if (!projectSlug) {
+      setLoading(false)
+      return
+    }
 
     const controller = new AbortController()
     setLoading(true)
-    const url = projects.length > 0
-      ? `${getApiBase()}/api/projects/${projectSlug}/manifest`
-      : `${getApiBase()}/api/manifest`
+    const url = `${getApiBase()}/api/projects/${encodeURIComponent(projectSlug)}/manifest`
 
     apiFetch(url, { signal: controller.signal })
       .then(async (res) => {
@@ -258,7 +247,7 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
     return () => controller.abort()
     // `signedIn` is a dependency so that a successful sign-in re-fetches the
     // manifest: a project that answered 403 while anonymous may now be allowed.
-  }, [projectSlug, projects.length, projectsResolved, signedIn])
+  }, [projectSlug, signedIn])
 
   // Listen for location changes to detect cross-project navigation
   useEffect(() => {

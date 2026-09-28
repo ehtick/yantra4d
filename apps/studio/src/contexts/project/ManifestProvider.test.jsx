@@ -18,7 +18,7 @@ function TestConsumer() {
   const {
     loading, manifest, getMode, getParametersForMode, getDefaultParams, getDefaultColors, getLabel,
     getCameraViews, getGroupLabel, getViewerConfig, getEstimateConstants, projectSlug,
-    projects, switchProject,
+    projects, switchProject, ready, manifestError,
   } = useManifest()
   if (loading) return <div data-testid="loading">loading</div>
 
@@ -41,6 +41,8 @@ function TestConsumer() {
 
   return (
     <div>
+      <span data-testid="ready">{String(ready)}</span>
+      <span data-testid="manifest-error">{manifestError}</span>
       <span data-testid="bin-id">{binMode?.id}</span>
       <span data-testid="baseplate-params">{baseplateParams.map(p => p.id).join(',')}</span>
       <span data-testid="default-grid-x">{defaults.grid_x}</span>
@@ -65,6 +67,31 @@ function TestConsumer() {
 }
 
 describe('ManifestProvider', () => {
+  it('loads the requested manifest while catalogue discovery is pending', async () => {
+    const fetchMock = vi.fn((url) => url.endsWith('/api/projects')
+      ? new Promise(() => {})
+      : Promise.resolve({ ok: true, json: async () => fallbackManifest }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { unmount } = render(<ManifestProvider><TestConsumer /></ManifestProvider>)
+    await waitFor(() => expect(screen.getByTestId('ready')).toHaveTextContent('true'))
+    expect(fetchMock.mock.calls.map(([url]) => url)).toContainEqual(
+      expect.stringContaining('/api/projects/gridfinity/manifest'))
+    expect(screen.getByTestId('projects-count')).toHaveTextContent('0')
+    const catalogueSignal = fetchMock.mock.calls[0][1].signal
+    unmount()
+    expect(catalogueSignal.aborted).toBe(true)
+  })
+
+  it('keeps direct project loading independent of a failed catalogue', async () => {
+    vi.stubGlobal('fetch', vi.fn((url) => url.endsWith('/api/projects')
+      ? Promise.reject(new DOMException('Timed out', 'AbortError'))
+      : Promise.resolve({ ok: true, json: async () => fallbackManifest })))
+    render(<ManifestProvider><TestConsumer /></ManifestProvider>)
+    await waitFor(() => expect(screen.getByTestId('ready')).toHaveTextContent('true'))
+    expect(screen.getByTestId('manifest-error')).toBeEmptyDOMElement()
+    expect(screen.getByTestId('project-slug')).toHaveTextContent('gridfinity')
+  })
+
   it('provides fallback manifest data', async () => {
     render(
       <ManifestProvider>
