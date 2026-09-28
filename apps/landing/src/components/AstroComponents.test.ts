@@ -100,8 +100,8 @@ describe('Hero.astro', () => {
     expect(html).toMatch(/Launch Studio|studioBtn/)
   })
 
-  it('has scroll indicator animation', () => {
-    expect(html).toContain('animate-bounce')
+  it('has a scroll indicator without an idle animation loop', () => {
+    expect(html).not.toContain('animate-bounce')
     expect(html).toContain('<svg')
     expect(html).toContain('bottom-8')
   })
