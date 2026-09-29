@@ -356,6 +356,8 @@ jobs:
         with:
           context: .
           file: ./apps/api/Dockerfile
+          build-args: |
+            RENDER_BUILD_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -485,6 +487,7 @@ jobs:
           provenance: false
           sbom: false
           build-args: |
+            VITE_RENDER_BUILD_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
             VITE_API_BASE=https://api.yantra4d.com
             VITE_JANUA_BASE_URL=${{ secrets.JANUA_BASE_URL }}
             VITE_JANUA_CLIENT_ID=${{ steps.janua_client.outputs.client_id }}
@@ -755,6 +758,7 @@ jobs:
           provenance: false
           sbom: false
           build-args: |
+            VITE_RENDER_BUILD_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
             VITE_API_BASE=https://api.yantra4d.com
             VITE_JANUA_BASE_URL=${{ secrets.JANUA_BASE_URL }}
             VITE_JANUA_CLIENT_ID=jnc_-v2RiP_TMO-XSExftpCh41K46xeszlKh

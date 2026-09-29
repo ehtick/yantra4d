@@ -23,6 +23,7 @@ from services.core.project_access import (
     is_private_project,
     require_project_access,
 )
+from services.engine.render_revision import render_revision
 from utils.project_resolver import find_project_dir, project_write_root
 from utils.route_helpers import error_response, handle_exceptions
 from utils.validators import require_valid_slug
@@ -103,6 +104,7 @@ def get_project_manifest(slug):
 
     try:
         body = json.dumps(manifest.as_json(), sort_keys=True)
+        revision = render_revision()
 
         if is_private_project(slug, manifest):
             # A private manifest gets neither a shared cache nor an ETag: the
@@ -112,17 +114,20 @@ def get_project_manifest(slug):
             resp = make_response(body)
             resp.headers["Content-Type"] = "application/json"
             resp.headers["Cache-Control"] = "private, no-store"
+            if revision:
+                resp.headers["X-Render-Revision"] = revision
             return resp
 
-        etag = hashlib.md5(body.encode()).hexdigest()
-
-        if request.if_none_match and etag in request.if_none_match:
-            return make_response("", 304)
-
-        resp = make_response(body)
+        # Geometry-only releases leave the authored manifest unchanged. Include
+        # the renderer identity in validators and revalidate on project load.
+        etag = hashlib.sha256(f"{revision}\n{body}".encode()).hexdigest()
+        unchanged = request.if_none_match and etag in request.if_none_match
+        resp = make_response("" if unchanged else body, 304 if unchanged else 200)
         resp.headers["Content-Type"] = "application/json"
-        resp.headers["Cache-Control"] = "public, max-age=300"
+        resp.headers["Cache-Control"] = "public, no-cache"
         resp.headers["ETag"] = etag
+        if revision:
+            resp.headers["X-Render-Revision"] = revision
         return resp
     except RuntimeError as e:
         return error_response(str(e), 404, error_code="manifest_serialization_error")

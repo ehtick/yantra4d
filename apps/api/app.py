@@ -190,7 +190,7 @@ def create_app():
     # conditional/ranged handling Werkzeug's `send_file` provides.
     app = Flask(__name__, static_folder=None)
     app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB upload limit
-    CORS(app, origins=Config.CORS_ORIGINS)
+    CORS(app, origins=Config.CORS_ORIGINS, expose_headers=["X-Render-Revision"])
 
     limiter.init_app(app)
 

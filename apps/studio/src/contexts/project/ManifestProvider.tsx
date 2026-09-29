@@ -124,6 +124,7 @@ interface ManifestErrorBody {
 
 export interface ManifestContextValue {
   manifest: Manifest
+  renderRevision: string
   loading: boolean
   ready: boolean
   manifestError: ManifestErrorKind | null
@@ -163,6 +164,7 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
   const { isAuthenticated } = useAuth()
   const signedIn = Boolean(isAuthenticated)
   const [manifest, setManifest] = useState<Manifest>(fallbackManifest as Manifest)
+  const [renderRevision, setRenderRevision] = useState('')
   const [projects, setProjects] = useState<ProjectListItem[]>([])
   const [projectSlug, setProjectSlug] = useState<string | null>(() => _getProjectSlug(location))
   const routeSlug = _getProjectSlug(location)
@@ -235,13 +237,14 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
           setSettledRequest({ slug: projectSlug, signedIn })
           return undefined
         }
-        return res.json()
+        return { manifest: await res.json(), revision: res.headers?.get('X-Render-Revision') || '' }
       })
       .then((data) => {
         if (data) {
+          setRenderRevision(data.revision)
           setManifestError(null)
           setManifestAuthRequired(false)
-          setManifest(data)
+          setManifest(data.manifest)
           setSettledRequest({ slug: projectSlug, signedIn })
         }
       })
@@ -322,6 +325,7 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
 
   const value = useMemo(() => ({
     manifest,
+    renderRevision,
     loading,
     ready,
     manifestError,
@@ -340,7 +344,7 @@ export function ManifestProvider({ children }: ManifestProviderProps) {
     getViewerConfig,
     getEstimateConstants,
     presets: manifest.presets || [],
-  }), [manifest, loading, ready, manifestError, manifestAuthRequired, projects, projectSlug, switchProject, getMode, getParametersForMode, getPartColors, getDefaultParams, getDefaultColors, getLabel, getCameraViews, getGroupLabel, getViewerConfig, getEstimateConstants])
+  }), [manifest, renderRevision, loading, ready, manifestError, manifestAuthRequired, projects, projectSlug, switchProject, getMode, getParametersForMode, getPartColors, getDefaultParams, getDefaultColors, getLabel, getCameraViews, getGroupLabel, getViewerConfig, getEstimateConstants])
 
   return <ManifestContext.Provider value={value}>{children}</ManifestContext.Provider>
 }

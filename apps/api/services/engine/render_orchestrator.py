@@ -30,6 +30,7 @@ from services.engine.render_contract import (
     render_final_channel_for_job,
 )
 from services.engine.render_engine import RENDER_TIMEOUT_S
+from services.engine.render_revision import cache_revision
 from services.storage import publish_artifact_best_effort
 
 r = redis.Redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379"), decode_responses=True)
@@ -220,12 +221,6 @@ def extract_render_payload(data: dict) -> dict | RenderPayloadError:
 
     params = validate_params(raw_params, project_slug or None)
 
-    raw_hash = json.dumps({"s": scad_filename, "p": params}, sort_keys=True)
-    param_hash = hashlib.sha256(raw_hash.encode()).hexdigest()[:10]
-
-    base_prefix = f"{project_slug}_{Config.STL_PREFIX}" if project_slug else Config.STL_PREFIX
-    stl_prefix = f"{base_prefix}{param_hash}_"
-
     # Inject Material Hyperobject Compensations. Read from the resolved parameter
     # container so a flattened legacy payload no longer silently loses this field.
     target_mat = raw_params.get('target_material') if isinstance(raw_params, dict) else None
@@ -233,6 +228,15 @@ def extract_render_payload(data: dict) -> dict | RenderPayloadError:
         _inject_material_compensations(params, target_mat)
 
     scad_content_hash = compute_scad_hash(scad_path)
+    # URLs must change along with cache identity: retaining an old URL must not
+    # silently replace its bytes after a deployment or a source edit.
+    raw_hash = json.dumps({
+        "s": scad_filename, "p": params, "mode": mode_id,
+        "source": scad_content_hash, "revision": cache_revision(),
+    }, sort_keys=True)
+    param_hash = hashlib.sha256(raw_hash.encode()).hexdigest()[:10]
+    base_prefix = f"{project_slug}_{Config.STL_PREFIX}" if project_slug else Config.STL_PREFIX
+    stl_prefix = f"{base_prefix}{param_hash}_"
 
     return {
         'scad_filename': scad_filename,

@@ -564,3 +564,22 @@ def test_stream_part_timeout_stays_under_subprocess_ceiling():
     from services.engine import render_orchestrator
 
     assert render_orchestrator.RENDER_STREAM_PART_TIMEOUT_SECONDS < 300
+
+
+class TestReleaseArtifactNames:
+    def test_release_and_source_changes_do_not_overwrite_previous_urls(self, tmp_path, monkeypatch):
+        from services.engine.render_orchestrator import extract_render_payload
+        source = tmp_path / "main.scad"
+        source.write_text("cube(10);")
+        context = ("main.scad", str(source), ["main"], {}, {}, "default")
+        with patch("services.engine.render_orchestrator.resolve_render_context", return_value=context), \
+             patch("services.engine.render_orchestrator.validate_params", side_effect=lambda p, _: p):
+            monkeypatch.setenv("RENDER_BUILD_ID", "release-one")
+            first = extract_render_payload({"project": "test", "parameters": {"size": 10}})
+            assert extract_render_payload({"project": "test", "parameters": {"size": 10}})["stl_prefix"] == first["stl_prefix"]
+            monkeypatch.setenv("RENDER_BUILD_ID", "release-two")
+            second = extract_render_payload({"project": "test", "parameters": {"size": 10}})
+            assert first["stl_prefix"] != second["stl_prefix"]
+            source.write_text("sphere(10);")
+            third = extract_render_payload({"project": "test", "parameters": {"size": 10}})
+            assert third["stl_prefix"] != second["stl_prefix"]

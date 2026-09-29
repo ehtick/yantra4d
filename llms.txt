@@ -14,3 +14,7 @@ Compact LLM context index for this repository.
 Routine production operations are Enclii-first. Use Enclii web, API, or CLI
 before raw infrastructure tools. Direct `kubectl`, `helm`, SSH, provider CLIs,
 `docker exec`, or direct container access is bootstrap/break-glass only.
+
+## Render release integrity
+
+[Cache identity and artifact storage](docs/operations/render-artifact-storage.md#cache-identity-across-releases) documents API/worker and Studio build namespaces, manifest revalidation and the limits of project-load invalidation. [README](README.md) is the platform overview. Keep runtime revision metadata separate from authored commons manifests.

@@ -177,3 +177,27 @@ class TestProjectsAPI:
         res = client.put("/api/projects/test-project/manifest/assembly-steps", json={"assembly_steps": []})
         assert res.status_code == 500
 
+
+
+class TestManifestRenderRevision:
+    def test_geometry_release_invalidates_unchanged_manifest(self, client, monkeypatch):
+        monkeypatch.setenv("RENDER_BUILD_ID", "release-one")
+        first = client.get("/api/projects/test-project/manifest")
+        assert first.headers["X-Render-Revision"] == "release-one"
+        assert first.headers["Cache-Control"] == "public, no-cache"
+        same = client.get("/api/projects/test-project/manifest", headers={"If-None-Match": first.headers["ETag"]})
+        assert same.status_code == 304
+        assert same.headers["X-Render-Revision"] == "release-one"
+        monkeypatch.setenv("RENDER_BUILD_ID", "release-two")
+        updated = client.get("/api/projects/test-project/manifest", headers={"If-None-Match": first.headers["ETag"]})
+        assert updated.status_code == 200
+        assert updated.get_json() == first.get_json()
+        assert updated.headers["X-Render-Revision"] == "release-two"
+        assert updated.headers["ETag"] != first.headers["ETag"]
+
+    def test_revision_is_readable_by_cross_origin_studio(self, client, monkeypatch):
+        from config import Config
+        monkeypatch.setenv("RENDER_BUILD_ID", "release-one")
+        origin = Config.CORS_ORIGINS[0]
+        response = client.get("/api/projects/test-project/manifest", headers={"Origin": origin})
+        assert "X-Render-Revision" in response.headers["Access-Control-Expose-Headers"]

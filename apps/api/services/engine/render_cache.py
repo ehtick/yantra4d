@@ -28,6 +28,7 @@ from collections import OrderedDict
 
 import redis as redis_lib
 
+from services.engine.render_revision import cache_revision
 from utils.metrics import CACHE_HITS, CACHE_MISSES
 
 logger = logging.getLogger(__name__)
@@ -179,6 +180,7 @@ class RenderCache:
             "format": export_format,
             # See _engine_signature: keeps Manifold and CGAL outputs disjoint.
             "engine": cls._engine_signature(),
+            "revision": cache_revision(),
             **({"scad_hash": scad_content_hash} if scad_content_hash else {}),
         }, sort_keys=True)
         return hashlib.sha256(raw.encode()).hexdigest()
