@@ -46,6 +46,7 @@ def run_step(tmp_path, case, exit_code, populated=True):
     selector.write_text((ROOT / "scripts/ci/select_render_cartridges.py").read_text())
     (tmp_path / "projects/libs").mkdir(parents=True)
     (tmp_path / "projects/commons-lib").mkdir()
+    (tmp_path / "projects/commons-lib/scad_core.scad").write_text("// shared include fixture\n")
     if populated:
         (tmp_path / "projects/example").mkdir()
         (tmp_path / "projects/example/project.json").write_text("{}")
@@ -71,7 +72,9 @@ def test_checker_exit_survives_tee(tmp_path, case, exit_code):
     if "Structural" not in case[2]:
         assert "--require-openscad" in args
         paths = [args[i + 1] for i, value in enumerate(args) if value == "--openscad-path"]
-        assert paths == [str(tmp_path / "libs"), str(tmp_path / "projects/commons-lib")]
+        # Cartridges include <commons-lib/scad_core.scad>; search roots must
+        # resolve that relative include, not start inside commons-lib itself.
+        assert any((Path(root) / "commons-lib/scad_core.scad").is_file() for root in paths)
 
 
 @pytest.mark.parametrize("case", CASES[:2])

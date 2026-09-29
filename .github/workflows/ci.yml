@@ -980,7 +980,7 @@ jobs:
           fi
           status=0
           y4d-spec check --render --parity --require-openscad \
-            --openscad-path "$PWD/libs" --openscad-path "$PWD/projects/commons-lib" \
+            --openscad-path "$PWD/libs" --openscad-path "$PWD/projects" \
             -v "${dirs[@]}" 2>&1 | tee render-report.txt || status=$?
           echo "### y4d-spec renders (changed)" >> "$GITHUB_STEP_SUMMARY"
           tail -1 render-report.txt >> "$GITHUB_STEP_SUMMARY"
