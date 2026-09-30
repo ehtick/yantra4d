@@ -35,6 +35,8 @@ Render caches are scoped to published renderer builds; see [release cache identi
 
 [Native renderer output and cancellation](docs/guides/troubleshooting.md#native-renderer-stalls-after-substantial-output) explains pipe draining, deadlines and remaining isolation limits.
 
+[Publication source acceptance](docs/operations/release-source-gate.md) describes the exact-main CI gate, stale-source pin refusal and runtime verification boundary.
+
 ## 🛠️ The Stack
 - **CAD Engines**: Four-kernel execution via [OpenSCAD](https://openscad.org/) (CSG), [CadQuery](https://cadquery.readthedocs.io/) (B-Rep), a native **Implicit SDF Engine** (TPMS/Lattice), and a **Graph Engine** that transpiles `.graph.json` node graphs into sandboxed CadQuery (see [authoring guide](docs/guides/graph-cartridges.md)).
 - **The Studio**: React 19 + Three.js + Manifold-3d for blisteringly fast volumetric browser rendering.
