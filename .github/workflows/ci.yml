@@ -60,9 +60,9 @@ jobs:
   # doubling: merging a pull request runs the full matrix for the merge commit,
   # then deploy.yml pushes `deploy(yantra4d): update digests`, which touches
   # ONLY k8s/production/kustomization.yaml — and that second push ran the whole
-  # matrix again for a file no job here reads. deploy.yml already excludes that
-  # path from its own triggers for the same reason ("Digest commits do not
-  # loop"); this is the other half of that rule.
+  # matrix again for a file no job here reads. deploy.yml classifies that path
+  # as a no-op after CI completion ("Digest commits do not loop"); this is the
+  # other half of that rule.
   #
   # no-code means EVERY changed file is documentation or a deploy digest bump:
   # any `*.md`, `docs/**`, `apps/docs/**` (the Starlight docs site, which no job
