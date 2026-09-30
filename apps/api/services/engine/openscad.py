@@ -157,6 +157,25 @@ def validate_params(params: dict, project_slug: str | None = None) -> dict:
             if max_val is not None and num_val > float(max_val):
                 num_val = float(max_val)
             cleaned[key] = num_val
+        elif param_type == "select":
+            # Native HTML selects may send strings, but the declared option
+            # owns the kernel type. Quoting a numeric enum changes geometry.
+            options = [option["value"] for option in defn.get("options", [])
+                       if isinstance(option, dict) and "value" in option]
+            matches = []
+            if isinstance(value, (str, int, float)) and not isinstance(value, bool):
+                matches = [option for option in options
+                           if not isinstance(option, bool) and type(option) is type(value) and option == value]
+                if not matches:
+                    matches = [option for option in options
+                               if isinstance(option, (str, int, float)) and not isinstance(option, bool)
+                               and (str(option) == str(value)
+                                    or (isinstance(option, (int, float)) and isinstance(value, (int, float))
+                                        and option == value))]
+            if len(matches) != 1:
+                logger.warning("Rejecting undeclared or ambiguous select value for %s", key)
+                continue
+            cleaned[key] = matches[0]
         elif param_type == "text":
             str_val = str(value)
             if not re.match(r'^[a-zA-Z0-9 _.#,-]*$', str_val):
@@ -344,7 +363,7 @@ def build_openscad_command(output_path: str, scad_path: str, params: dict, mode_
         elif isinstance(value, (int, float)):
             val_str = str(value)
         elif isinstance(value, str):
-            val_str = f'"{value}"'
+            val_str = json.dumps(value, ensure_ascii=False)
         else:
             str_val = str(value)
             if re.match(r'^[a-zA-Z0-9_]+$', str_val):

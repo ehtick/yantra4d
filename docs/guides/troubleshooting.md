@@ -366,3 +366,14 @@ separates CadQuery styles from OpenSCAD numeric styles and bolt dimensions from
 nut dimensions. Its [consumer regression](../../apps/studio/src/contexts/project/ManifestProvider.fasteners.test.jsx)
 checks all five modes against the actual commons pin. Repair cartridge metadata
 in the commons, then promote an accepted pin and regenerate derived assets.
+
+## Numeric dropdowns change native geometry
+
+Select parameters use the literal type declared by their manifest option. A
+browser may submit `"2"`, but an option declared as numeric `2` must reach the
+kernel as a number. Otherwise OpenSCAD comparisons and lookup-table indexing can
+fall back to unrelated dimensions. Undeclared or ambiguous values are rejected
+by parameter cleaning; declared string options remain strings and are escaped
+as one OpenSCAD string literal. The existing checkbox adapter remains numeric
+`0`/`1`; direct CLI comparisons must use the same encoding when a cartridge tests
+`== 1`. Compare actual mesh dimensions, not just successful process exit.
