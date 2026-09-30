@@ -333,3 +333,29 @@ warning saying so. In production the same path is the bug the bundle exists to
 fix: nginx's `try_files … /index.html` answers `/scad/anything` with the SPA's
 own HTML at **200 OK**, so the fallback explicitly refuses a body beginning with
 `<!doctype` rather than writing a page of HTML into the virtual FS as SCAD.
+
+### Native renderer stalls after substantial output
+
+The cancellable OpenSCAD and CadQuery subprocess paths drain stdout and stderr
+while the renderer runs. Waiting for exit before reading can fill an OS pipe
+and deadlock a valid render until its timeout. The shared process utility uses
+timed `communicate()` calls to drain output while checking cancellation; the
+existing render deadline and cleanup remain in force. OpenSCAD streaming discards
+unused stdout instead of creating an unread pipe; its stderr progress stream
+and output geometry file remain unchanged.
+
+[Real subprocess regressions](../../apps/api/tests/unit/test_native_render_pipe_drain.py)
+write more than pipe capacity and exercise cancellation and timeout. This repair
+does not establish process-tree isolation, a diagnostic-output memory budget,
+or geometric correctness. The warm CadQuery pool and CadQuery streaming path
+retain their existing implementations.
+
+### Controls that do not affect the selected mode
+
+The Studio filters parameters with `visible_in_modes`; an omitted list makes a
+control visible in every mode. Authors must scope controls to the modes that
+consume them, including shared dimensions. The [fastener cartridge](https://github.com/madfam-org/solid-hyperobjects/blob/main/fasteners/docs/README.md)
+separates CadQuery styles from OpenSCAD numeric styles and bolt dimensions from
+nut dimensions. Its [consumer regression](../../apps/studio/src/contexts/project/ManifestProvider.fasteners.test.jsx)
+checks all five modes against the actual commons pin. Repair cartridge metadata
+in the commons, then promote an accepted pin and regenerate derived assets.

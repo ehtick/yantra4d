@@ -547,7 +547,7 @@ Key files: `routes/github.py`, `routes/git_ops.py`, `routes/editor.py`, `service
 | Target | Method |
 |--------|--------|
 | Deploy runners | Every job in `deploy.yml` runs on `${{ vars.DEPLOY_RUNNER_LABEL != '' && vars.DEPLOY_RUNNER_LABEL || 'madfam-runners-blue' }}`. Unset -> the shared pool, exactly as before. Set to a dedicated runner label -> deploys stop queueing behind PR CI on the shared pool. Both arms are MADFAM-operated runners; there is no GitHub-hosted arm (ADR-010) |
-| Enclii PaaS | Auto-deploy on push to main -- `yantra4d-landing` at yantra4d.com, `yantra4d-studio` at app.yantra4d.com, `yantra4d-backend` at api.yantra4d.com, `yantra4d-admin` at admin.yantra4d.com |
+| Enclii PaaS | Publish after successful exact-source main CI; manual dispatch uses the same [source gate](docs/operations/release-source-gate.md). Verify serving images and behavior after promotion -- `yantra4d-landing` at yantra4d.com, `yantra4d-studio` at app.yantra4d.com, `yantra4d-backend` at api.yantra4d.com, `yantra4d-admin` at admin.yantra4d.com |
 | Docker | `docker compose up` (backend + studio + landing + admin, local) |
 | Local | Flask dev server (5000) + Vite dev server (5173) + Astro dev server (4321) + Admin dev server (5174) |
 

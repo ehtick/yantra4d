@@ -16,7 +16,7 @@ from pathlib import Path
 
 from config import Config
 from manifest import get_manifest
-from services.engine.render_engine import RENDER_TIMEOUT_S, ProcessManager, RenderResult
+from services.engine.render_engine import RENDER_TIMEOUT_S, ProcessManager, RenderResult, communicate_cancellable
 
 logger = logging.getLogger(__name__)
 
@@ -437,13 +437,9 @@ def run_render(
         kill_timer = threading.Timer(RENDER_TIMEOUT_S, lambda: process.kill())
         kill_timer.start()
         try:
-            while process.poll() is None:
-                if is_cancelled():
-                    _process_manager.cancel()
-                    break
-                time.sleep(0.05)
-
-            _, stderr = process.communicate()
+            _, stderr = communicate_cancellable(
+                process, is_cancelled, _process_manager.cancel,
+            )
         finally:
             duration_ms = (time.monotonic() - t0) * 1000
             kill_timer.cancel()
@@ -504,10 +500,12 @@ def stream_render(cmd: list, part: str, part_base: float, part_weight: float, in
     })
 
     try:
-        # Run with Popen to stream stderr
+        # Geometry goes to the output file and progress comes from stderr.
+        # Never create an unread stdout pipe: verbose children can fill it and
+        # deadlock before writing progress or exiting.
         logger.info(f"Streaming OpenSCAD (CWD: {os.getcwd()}): {_sanitize_cmd_for_log(cmd)}")
         process = _process_manager.start(
-            subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=_openscad_env(scad_path))
+            subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, env=_openscad_env(scad_path))
         )
 
         kill_timer = threading.Timer(RENDER_TIMEOUT_S, lambda: process.kill())
