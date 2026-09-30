@@ -37,6 +37,8 @@ Render caches are scoped to published renderer builds; see [release cache identi
 
 [Mode-specific controls](docs/guides/troubleshooting.md#controls-that-do-not-affect-the-selected-mode) documents the commons-owned visibility contract and actual-pin fastener regression.
 
+[Viewer resource ownership](docs/architecture/viewer-resource-ownership.md) documents the 32 MiB/16-entry CPU cache, per-consumer geometry, GLTF cleanup and the limits of these budgets.
+
 [Publication source acceptance](docs/operations/release-source-gate.md) describes the exact-main CI gate, stale-source pin refusal and runtime verification boundary.
 
 ## 🛠️ The Stack
