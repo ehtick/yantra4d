@@ -277,6 +277,7 @@ jobs:
       id-token: write
     outputs:
       image_digest: ${{ steps.build.outputs.digest }}
+      render_revision: ${{ steps.render-identity.outputs.value }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -350,6 +351,14 @@ jobs:
             type=sha,prefix=
             type=raw,value=main,enable={{is_default_branch}}
 
+      # Persist the producing attempt's identity. A failed-jobs rerun can reuse
+      # this successful build while verification has a later run_attempt.
+      - name: Record renderer build identity
+        id: render-identity
+        env:
+          BUILD_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+        run: printf 'value=%s\n' "$BUILD_ID" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         id: build
         uses: docker/build-push-action@v6
@@ -357,7 +366,7 @@ jobs:
           context: .
           file: ./apps/api/Dockerfile
           build-args: |
-            RENDER_BUILD_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+            RENDER_BUILD_ID=${{ steps.render-identity.outputs.value }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -883,10 +892,11 @@ jobs:
       - name: Wait for the serving renderer release
         env:
           BACKEND_RESULT: ${{ needs.build-backend.result }}
-          RENDER_BUILD_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          RENDER_BUILD_ID: ${{ needs.build-backend.outputs.render_revision }}
         run: |
           EXPECTED=""
           if [ "$BACKEND_RESULT" = success ]; then
+            test -n "$RENDER_BUILD_ID" || { echo "Missing renderer build identity"; exit 1; }
             EXPECTED="$RENDER_BUILD_ID"
           fi
           python3 scripts/ci/wait_for_render_release.py --expected-revision "$EXPECTED"

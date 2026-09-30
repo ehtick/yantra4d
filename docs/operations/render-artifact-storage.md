@@ -18,7 +18,10 @@ The image publisher assigns `RENDER_BUILD_ID` to the API/worker image and
 `VITE_RENDER_BUILD_ID` to Studio, using the source SHA, build run and attempt.
 The readiness response exposes the same public `render_revision`. After a backend
 build, the publisher waits for readiness from that exact build; an HTTP200 from
-the previous image cannot accept its replacement. Frontend-only publication
+the previous image cannot accept its replacement. The expected identity is an
+output of the producing build job, so retrying only failed jobs does not invent
+a new identity for an image reused from a successful earlier attempt. A missing
+build output fails verification closed. Frontend-only publication
 checks backend availability and does not claim frontend image convergence.
 Independent production image and user-journey checks remain required.
 

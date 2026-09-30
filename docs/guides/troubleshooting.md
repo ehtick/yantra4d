@@ -180,6 +180,12 @@ The CI workflow runs `diff` between these two files. They must be byte-identical
 ### Shared Link Shows Wrong Parameters
 
 **Format**: `?p=<base64url-encoded JSON>` encodes only non-default parameter values.
+New links escape non-ASCII text using JSON Unicode escapes before base64url
+encoding, so Chinese, Arabic, emoji and combining marks survive the existing
+`atob` → `JSON.parse` reader. Legacy Latin-1 links keep their original decoding;
+do not switch them unconditionally to UTF-8. ASCII links keep their wire format.
+See the [share hook](../../apps/studio/src/hooks/project/useShareableUrl.ts) and
+[round-trip tests](../../apps/studio/src/hooks/project/useShareableUrl.test.js).
 
 **Causes**:
 - Parameters were changed after the link was generated

@@ -156,11 +156,6 @@ test.describe('Studio Sidebar', () => {
     expect(await sidebar.isGenerateDisabled()).toBe(false)
   })
 
-  test('verify button is disabled when no parts rendered', async ({ sidebar }) => {
-    // Initially no parts, verify should be disabled
-    expect(await sidebar.verifyButton.isDisabled()).toBe(true)
-  })
-
   test('reset button reverts params to defaults', async ({ sidebar }) => {
     await sidebar.editSliderValue('width', 100)
     await expect(sidebar.sliderValue('width')).toHaveText('100', { timeout: 10000 })
@@ -177,6 +172,33 @@ test.describe('Studio Sidebar', () => {
       // Should toggle between basic and advanced
     }
   })
+})
+
+
+test('verification follows the completed render output', async ({ page, sidebar }) => {
+  await setLanguage(page, 'en')
+  await forceBackendRender(page)
+  // Install before navigation: the default mock auto-renders a part, so an
+  // assertion about an initially empty scene races that valid result.
+  let emptyResponseSent = false
+  await page.route('**/api/render-stream', async (route) => {
+    if (emptyResponseSent) return route.fallback()
+    await route.fulfill({
+      contentType: 'text/event-stream',
+      body: 'data: {"event":"complete","parts":[]}\n\n',
+    })
+    emptyResponseSent = true
+  })
+  await goToStudio(page)
+  await expect.poll(() => emptyResponseSent).toBe(true)
+  await sidebar.waitForRenderState('idle')
+  await expect(sidebar.verifyButton).toBeDisabled()
+
+  // A different configuration misses the empty result's cache and uses the
+  // original successful mock. Verification must become available only then.
+  await sidebar.editSliderValue('width', 99)
+  await sidebar.waitForRenderOutput()
+  await expect(sidebar.verifyButton).toBeEnabled()
 })
 
 
