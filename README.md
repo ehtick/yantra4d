@@ -209,3 +209,5 @@ Open [localhost:3000](http://localhost:3000) to enter the Studio.
 Yantra4D is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**. Our hyperobjects are always released under the **CERN-OHL-W-2.0** (Weakly Reciprocal) open hardware license.
 
 **Join the movement. Print the Hyperobjects.**
+
+Shared configuration links preserve Unicode text through JSON escapes and retain legacy decoding. See the [share-link contract and limits](docs/guides/troubleshooting.md#shareable-urls).

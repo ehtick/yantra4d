@@ -36,6 +36,25 @@ describe('useShareableUrl', () => {
   })
 
   describe('generateShareUrl', () => {
+    it.each(['中文标签', 'قطعة', 'café 🧵', 'e\u0301'])('round-trips Unicode text %s through existing decoders', (text) => {
+      const { result } = renderHook(() => useShareableUrl({
+        params: { text }, defaultParams: { text: '' }, mode: 'tag', projectSlug: 'keytag',
+      }))
+      const url = new URL(result.current.generateShareUrl())
+      const encoded = url.searchParams.get('p').replace(/-/g, '+').replace(/_/g, '/')
+      // Existing deployments read atob -> JSON.parse, so the new link must too.
+      expect(JSON.parse(atob(encoded))).toEqual({ text })
+      window.history.replaceState(null, '', url.pathname + url.search)
+      expect(getSharedParams()).toEqual({ text })
+    })
+
+    it('preserves the exact bytes of legacy Latin-1 text links', () => {
+      const diff = { text: 'café / Ã©' }
+      const encoded = btoa(JSON.stringify(diff)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+      window.history.replaceState(null, '', `?p=${encoded}`)
+      expect(getSharedParams()).toEqual(diff)
+    })
+
     it('round-trips a non-default mode through the navigation parser', () => {
       const modes = [{ id: 'single' }, { id: 'grid' }]
       const params = { ...defaultParams, size: 60 }
