@@ -1,20 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
-import { BufferGeometry, BufferAttribute, Scene } from 'three'
+import { BufferGeometry, Scene } from 'three'
 // @ts-expect-error three.js examples lack type declarations in this project's TS config
 import { GLTFLoader, GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
-// @ts-expect-error three.js examples lack type declarations in this project's TS config
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils'
+import { STLPayloadCache, type STLPayload } from '../../lib/stlPayloadCache'
+import { createSTLGeometry, mergeGLTFGeometry, disposeGLTF } from '../../lib/viewerResources'
 import { bearerHeaderForSameOrigin } from '../../lib/januaSso'
-
-interface WorkerGeometryData {
-  positions: Float32Array
-  normals?: Float32Array
-}
 
 interface WorkerMessage {
   id: string
   success: boolean
-  geometryData: WorkerGeometryData
+  geometryData: STLPayload
   error?: string
 }
 
@@ -27,8 +22,9 @@ interface WorkerLoaderResult {
 // Notice the ?worker syntax which Vite requires to bundle it correctly.
 let stlWorkerInstance: Worker | null = null
 
-// Simple global cache so we don't re-parse geometries that haven't changed URLs
-const geometryCache = new Map<string, BufferGeometry | Promise<BufferGeometry>>()
+// Completed CPU payloads are bounded; in-flight parsing is shared separately.
+const payloadCache = new STLPayloadCache()
+const pendingLoads = new Map<string, Promise<STLPayload>>()
 
 // Tasks belong to the shared loader, not to the component that first asked.
 // Unmounting one consumer must not remove the completion listener for the others.
@@ -40,11 +36,16 @@ function discardWorker(worker: Worker, message: string): void {
     try { worker.terminate() } catch { /* already gone */ }
 }
 
-function loadSTL(url: string): Promise<BufferGeometry> {
-    const cached = geometryCache.get(url)
+function loadSTL(url: string): Promise<STLPayload> {
+    const authHeader = bearerHeaderForSameOrigin(url)
+    // Same URL under a different session must never reuse a private payload.
+    const key = JSON.stringify([url, authHeader ?? null])
+    const cached = payloadCache.get(key)
     if (cached) return Promise.resolve(cached)
+    const pending = pendingLoads.get(key)
+    if (pending) return pending
 
-    const promise = new Promise<BufferGeometry>((resolve, reject) => {
+    const promise = new Promise<STLPayload>((resolve, reject) => {
         if (!stlWorkerInstance) {
             stlWorkerInstance = new Worker(new URL('../../workers/stlWorker.js', import.meta.url), { type: 'module' })
         }
@@ -74,85 +75,79 @@ function loadSTL(url: string): Promise<BufferGeometry> {
             const { id, success, geometryData, error } = event.data
             if (id !== taskId || settled) return
             if (!success) return fail(`Failed to parse STL: ${error}`)
-            const geometry = new BufferGeometry()
-            try {
-                geometry.setAttribute('position', new BufferAttribute(geometryData.positions, 3))
-                if (geometryData.normals) geometry.setAttribute('normal', new BufferAttribute(geometryData.normals, 3))
-                else geometry.computeVertexNormals()
-                geometry.computeBoundingSphere()
-                geometry.computeBoundingBox()
-                settled = true
-                detach()
-                resolve(geometry)
-            } catch (error) {
-                geometry.dispose()
-                fail(`Failed to reconstruct STL: ${String(error)}`)
+            if (!(geometryData?.positions instanceof Float32Array)
+                || geometryData.positions.length % 3 !== 0
+                || (geometryData.normals != null && (!(geometryData.normals instanceof Float32Array)
+                    || geometryData.normals.length !== geometryData.positions.length))) {
+                return fail('STL worker returned invalid geometry arrays')
             }
+            settled = true
+            detach()
+            resolve(geometryData)
         }
         tasks.add(fail)
         worker.addEventListener('message', handleMessage)
         worker.addEventListener('error', handleError)
         worker.addEventListener('messageerror', handleMessageError)
         try {
-            worker.postMessage({ url, id: taskId, authHeader: bearerHeaderForSameOrigin(url) })
+            worker.postMessage({ url, id: taskId, authHeader })
         } catch (error) {
             discardWorker(worker, `STL worker could not start task: ${String(error)}`)
         }
-    }).then(geometry => {
-        geometryCache.set(url, geometry)
-        return geometry
+    }).then(payload => {
+        pendingLoads.delete(key)
+        payloadCache.set(key, payload)
+        return payload
     }, error => {
-        geometryCache.delete(url)
+        pendingLoads.delete(key)
         throw error
     })
-    geometryCache.set(url, promise)
+    pendingLoads.set(key, promise)
     return promise
 }
 
-/** Load only the current URL while allowing other consumers to share STL work. */
+/** Load the current request; this effect owns all displayed Three.js resources. */
 export function useWorkerLoader(url: string | null | undefined, isGLTF: boolean = false): WorkerLoaderResult {
-    const [gltfResult, setGltfResult] = useState<{ url: string; data: GLTF } | null>(null)
-    const [stlResult, setStlResult] = useState<{ url: string; geometry: BufferGeometry } | null>(null)
-    const currentGltf = isGLTF && gltfResult && gltfResult.url === url ? gltfResult.data : null
+    // Identity distinguishes A/B/A transitions and never resurrects disposed A.
+    const request = useMemo(() => ({ url, isGLTF }), [url, isGLTF])
+    const [result, setResult] = useState<(WorkerLoaderResult & { request: typeof request }) | null>(null)
+    // Drop the state reference too, including when a URL is cleared indefinitely.
+    // The previous effect still owns its cleanup until React commits this change.
+    if (result && result.request !== request) setResult(null)
 
     useEffect(() => {
-        if (!url) return
+        if (!request.url) return
         let active = true
-        if (isGLTF) {
+        let release: (() => void) | undefined
+        const reportError = (error: unknown) => { if (active) console.error('[WorkerLoader]', error) }
+        if (request.isGLTF) {
             const loader = new GLTFLoader()
-            const auth = bearerHeaderForSameOrigin(url)
+            const auth = bearerHeaderForSameOrigin(request.url)
             if (auth) loader.setRequestHeader({ Authorization: auth })
-            loader.loadAsync(url).then((data: GLTF) => {
-                if (active) setGltfResult({ url, data })
-            }).catch((error: unknown) => { if (active) console.error('[WorkerLoader]', error) })
+            loader.loadAsync(request.url).then((data: GLTF) => {
+                if (!active) { disposeGLTF(data); return }
+                let geometry: BufferGeometry | null = null
+                try {
+                    geometry = mergeGLTFGeometry(data.scene)
+                } catch (error) {
+                    disposeGLTF(data)
+                    throw error
+                }
+                release = () => { geometry?.dispose(); disposeGLTF(data) }
+                setResult({ request, geometry, scene: data.scene })
+            }).catch(reportError)
         } else {
-            loadSTL(url).then(geometry => {
-                if (active) setStlResult({ url, geometry })
-            }).catch((error: unknown) => { if (active) console.error('[WorkerLoader]', error) })
+            loadSTL(request.url).then(payload => {
+                if (!active) return
+                const geometry = createSTLGeometry(payload)
+                release = () => geometry.dispose()
+                setResult({ request, geometry, scene: null })
+            }).catch(reportError)
         }
-        return () => { active = false }
-    }, [url, isGLTF])
+        return () => { active = false; release?.() }
+    }, [request])
 
-    // GLTF parsing logic identical to the standard Viewer
-    const gltfMergedGeom = useMemo((): BufferGeometry | null => {
-        if (!isGLTF || !currentGltf) return null
-        const geometries: BufferGeometry[] = []
-        currentGltf.scene.updateMatrixWorld(true)
-        currentGltf.scene.traverse((child: import('three').Object3D) => {
-            const mesh = child as { isMesh?: boolean; geometry?: BufferGeometry; matrixWorld: import('three').Matrix4 }
-            if (mesh.isMesh && mesh.geometry) {
-                const clonedGeom = mesh.geometry.clone()
-                clonedGeom.applyMatrix4(child.matrixWorld)
-                geometries.push(clonedGeom)
-            }
-        })
-        if (geometries.length === 0) return null
-        if (geometries.length === 1) return geometries[0]
-        return BufferGeometryUtils.mergeGeometries(geometries, false)
-    }, [currentGltf, isGLTF])
-
-    return {
-        geometry: isGLTF ? gltfMergedGeom : (url && stlResult?.url === url ? stlResult.geometry : null),
-        scene: currentGltf?.scene ?? null,
-    }
+    return result?.request === request
+        ? { geometry: result.geometry, scene: result.scene }
+        : { geometry: null, scene: null }
 }

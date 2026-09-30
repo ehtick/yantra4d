@@ -33,9 +33,13 @@ The vision: apply simulated energy to any hyperobject and watch the continuous S
 
 Render caches are scoped to published renderer builds; see [release cache identity](docs/operations/render-artifact-storage.md#cache-identity-across-releases) for invalidation, missing-identity behavior and remaining limits.
 
-[Native renderer output and cancellation](docs/guides/troubleshooting.md#native-renderer-stalls-after-substantial-output) explains pipe draining, deadlines and remaining isolation limits.
+[Native renderer output and cancellation](docs/guides/troubleshooting.md#native-renderer-stalls-after-substantial-output) explains pipe draining, per-request process ownership, deadlines and remaining isolation limits.
 
 [Mode-specific controls](docs/guides/troubleshooting.md#controls-that-do-not-affect-the-selected-mode) documents the commons-owned visibility contract and actual-pin fastener regression.
+
+[Native dropdown values](docs/guides/troubleshooting.md#numeric-dropdowns-change-native-geometry) retain the declared numeric or string option type; direct CLI comparisons must also match the platform checkbox encoding.
+
+[Viewer resource ownership](docs/architecture/viewer-resource-ownership.md) documents the 32 MiB/16-entry CPU cache, per-consumer geometry, GLTF cleanup and the limits of these budgets.
 
 [Publication source acceptance](docs/operations/release-source-gate.md) describes the exact-main CI gate, stale-source pin refusal and runtime verification boundary.
 

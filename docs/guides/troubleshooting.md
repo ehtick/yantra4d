@@ -344,6 +344,13 @@ existing render deadline and cleanup remain in force. OpenSCAD streaming discard
 unused stdout instead of creating an unread pipe; its stderr progress stream
 and output geometry file remain unchanged.
 
+Overlapping native requests retain separate process ownership. A cancellation
+callback terminates its own registered subprocess, and finishing one request
+does not deregister another. Both synchronous and streamed paths pass the
+process identity through cancellation and cleanup. The legacy argument-free
+engine cancellation helper still targets the most recently active process;
+request handlers must use their scoped cancellation signal instead.
+
 [Real subprocess regressions](../../apps/api/tests/unit/test_native_render_pipe_drain.py)
 write more than pipe capacity and exercise cancellation and timeout. This repair
 does not establish process-tree isolation, a diagnostic-output memory budget,
@@ -359,3 +366,14 @@ separates CadQuery styles from OpenSCAD numeric styles and bolt dimensions from
 nut dimensions. Its [consumer regression](../../apps/studio/src/contexts/project/ManifestProvider.fasteners.test.jsx)
 checks all five modes against the actual commons pin. Repair cartridge metadata
 in the commons, then promote an accepted pin and regenerate derived assets.
+
+## Numeric dropdowns change native geometry
+
+Select parameters use the literal type declared by their manifest option. A
+browser may submit `"2"`, but an option declared as numeric `2` must reach the
+kernel as a number. Otherwise OpenSCAD comparisons and lookup-table indexing can
+fall back to unrelated dimensions. Undeclared or ambiguous values are rejected
+by parameter cleaning; declared string options remain strings and are escaped
+as one OpenSCAD string literal. The existing checkbox adapter remains numeric
+`0`/`1`; direct CLI comparisons must use the same encoding when a cartridge tests
+`== 1`. Compare actual mesh dimensions, not just successful process exit.

@@ -5,6 +5,7 @@ Platform-level documentation for the Yantra4D parametric 3D print design platfor
 ## Documentation Index
 
 ### Architecture
+-   [Viewer resource ownership](./architecture/viewer-resource-ownership.md): bounded STL retention, per-consumer geometry and GLTF cleanup.
 -   [Architecture Audit](./architecture/architecture_audit.md): Deep dive into platform architecture and components.
 -   [Database & Analytics](./architecture/database.md): SQLite/PostgreSQL, Alembic migrations, analytics schema.
 -   [Engine architecture](./architecture/dual-engine.md): the four render kernels — OpenSCAD, CadQuery, implicit SDF, graph — and B-Rep export.
@@ -61,13 +62,12 @@ Platform-level documentation for the Yantra4D parametric 3D print design platfor
 
 ### Per-Project Docs
 
-Each project carries its own docs in `projects/{slug}/docs/`. The platform ships with 495
-cartridges (five slugs reserved for clean-room re-creation under ADR-021), and the
-API serves exactly those 495 — since RFC 0038 P2 the
-`cq-hyperobject-test` engine fixture is vendored under
-`apps/api/tests/fixtures/cartridges/` rather than sitting in `projects/`, and the
-client-private `tablaco` cartridges mount at `private-projects/` and are served
-only to authorized identities: <!-- fact source: docs/commons-catalog.json → counts.cartridges = 495; the exclusions are listed under "Licensing" in README.md -->
+Each project carries its own docs in `projects/{slug}/docs/`. The generated
+[commons catalog](./commons-catalog.json) records the current pinned cartridge
+count; the [README catalog table](../README.md)
+is its human-readable projection. The `cq-hyperobject-test` engine fixture lives
+under `apps/api/tests/fixtures/cartridges/`; client-private cartridges mount under
+`private-projects/` and are served only to authorized identities.
 
 -   [Sentinel Gripper](../projects/sentinel-gripper-hyperobject/README.md) 🤖 — Crown demo: soft-robotics compliant gripper with PPF physics optimization
 -   [Gridfinity](../projects/gridfinity/) — Modular storage bins (flagship)
