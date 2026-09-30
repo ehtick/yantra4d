@@ -37,6 +37,13 @@ models and sustained GPU/heap behavior still require measured device testing.
 This loader change does not introduce an artifact-size limit or a concurrency
 admission policy.
 
+The animated assembly grid uses a separate
+[assembly fetcher](../../apps/studio/src/services/domain/assemblyFetcher.ts), whose
+parameter cache is not covered by this budget. Its retained geometry and the
+[grid's per-render clones](../../apps/studio/src/components/viewer/AnimatedGrid.tsx)
+still need their own ownership and eviction repair. Do not interpret the main
+artifact loader's budget as an application-wide memory bound.
+
 Regression evidence lives in the [loader lifecycle tests](../../apps/studio/src/hooks/render/useWorkerLoader.test.js),
 [cache-budget tests](../../apps/studio/src/lib/stlPayloadCache.test.js) and
 [resource cleanup tests](../../apps/studio/src/lib/viewerResources.test.js).
