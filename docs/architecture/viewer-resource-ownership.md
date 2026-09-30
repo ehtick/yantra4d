@@ -50,6 +50,10 @@ Regression evidence lives in the [loader lifecycle tests](../../apps/studio/src/
 They cover shared consumers, StrictMode, stale results, 64 model replacements,
 1,000 distinct cache insertions, byte/entry limits, world transforms and cleanup.
 These are deterministic resource tests, not a production GPU soak measurement.
+The [bounded WebGL probe](../../apps/studio/e2e/resource-probe/README.md) separately
+measures actual renderer allocation counts across 100 STL/GLB swaps with two
+consumers. Its warmed baseline distinguishes renderer-owned textures from
+retained model allocations; it remains a small-asset lifecycle check.
 
 [Blank-viewer troubleshooting](../guides/troubleshooting.md#blank-viewer--no-stl)
 and [release cache identity](../operations/render-artifact-storage.md#cache-identity-across-releases)
