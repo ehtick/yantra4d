@@ -549,6 +549,7 @@ def test_stream_part_timeout_is_env_tunable():
     import os
     import subprocess
     import sys
+    from pathlib import Path
 
     # Reloading this module in-process replaces RenderPayloadError while route
     # modules retain the old class. Later malformed requests then return 500
@@ -558,8 +559,10 @@ def test_stream_part_timeout_is_env_tunable():
          ("from services.engine.render_orchestrator import RENDER_STREAM_PART_TIMEOUT_SECONDS; "
           "print(RENDER_STREAM_PART_TIMEOUT_SECONDS)")],
         env={**os.environ, "RENDER_STREAM_PART_TIMEOUT_SECONDS": "240"},
-        check=True, capture_output=True, text=True, timeout=30,
+        cwd=Path(__file__).resolve().parents[2],
+        check=False, capture_output=True, text=True, timeout=30,
     )
+    assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "240"
 
 
@@ -587,3 +590,6 @@ class TestReleaseArtifactNames:
             source.write_text("sphere(10);")
             third = extract_render_payload({"project": "test", "parameters": {"size": 10}})
             assert third["stl_prefix"] != second["stl_prefix"]
+            monkeypatch.setattr("services.engine.render_orchestrator.render_cache._engine_signature", lambda: "another-kernel")
+            fourth = extract_render_payload({"project": "test", "parameters": {"size": 10}})
+            assert fourth["stl_prefix"] != third["stl_prefix"]

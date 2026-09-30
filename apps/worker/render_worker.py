@@ -40,7 +40,12 @@ from services.engine.render_contract import (
     render_channel_for_job,
     render_final_channel_for_job,
 )
-from services.storage import check_artifact_store_ready, get_artifact_store, publish_artifact
+from services.engine.render_revision import render_revision
+from services.storage import (
+    check_artifact_store_ready,
+    get_artifact_store,
+    publish_artifact,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -298,8 +303,23 @@ def _post_render_convert(output_path, output_filename, part, stl_prefix, actual_
 
     return serve_path, serve_filename, viewer_filename
 
+def _reject_stale_release(task) -> bool:
+    """Queued work must never render a new image under an old artifact identity."""
+    current = render_revision()
+    requested = task.get("payload", {}).get("render_revision", "")
+    if requested == current:
+        return False
+    _notify_error(
+        task["job_id"], task["part"],
+        "Renderer release changed while this job was queued. Reload and generate again.",
+    )
+    return True
+
+
 def process_sync_task(task):
     """Processes a synchronous render task and publishes the final result."""
+    if _reject_stale_release(task):
+        return
     job_id = task['job_id']
     engine = task['engine']
     part = task['part']
@@ -415,6 +435,8 @@ def process_sync_task(task):
 
 def process_stream_task(task):
     """Processes a streaming render task and publishes SSE progress events."""
+    if _reject_stale_release(task):
+        return
     job_id = task['job_id']
     engine = task['engine']
     part = task['part']

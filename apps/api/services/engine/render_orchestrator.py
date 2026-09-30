@@ -30,7 +30,7 @@ from services.engine.render_contract import (
     render_final_channel_for_job,
 )
 from services.engine.render_engine import RENDER_TIMEOUT_S
-from services.engine.render_revision import cache_revision
+from services.engine.render_revision import cache_revision, render_revision
 from services.storage import publish_artifact_best_effort
 
 r = redis.Redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379"), decode_responses=True)
@@ -233,6 +233,7 @@ def extract_render_payload(data: dict) -> dict | RenderPayloadError:
     raw_hash = json.dumps({
         "s": scad_filename, "p": params, "mode": mode_id,
         "source": scad_content_hash, "revision": cache_revision(),
+        "kernel": render_cache._engine_signature(),
     }, sort_keys=True)
     param_hash = hashlib.sha256(raw_hash.encode()).hexdigest()[:10]
     base_prefix = f"{project_slug}_{Config.STL_PREFIX}" if project_slug else Config.STL_PREFIX
@@ -252,6 +253,7 @@ def extract_render_payload(data: dict) -> dict | RenderPayloadError:
         'project_slug': project_slug,
         'ignore_cache': data.get('ignore_cache', False),
         'scad_content_hash': scad_content_hash,
+        'render_revision': render_revision(),
     }
 
 

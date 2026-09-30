@@ -19,8 +19,12 @@ The image publisher assigns `RENDER_BUILD_ID` to the API/worker image and
 Rebuilding the same source produces a distinct namespace because fonts, kernels
 and dependency images can change independently of a cartridge's root script.
 The server's memory/Redis keys include this identity; generated artifact names
-also include it, the root source hash, mode and effective compensated parameters.
+also include it, the root source hash, kernel signature, mode and effective compensated parameters.
 Existing URLs are not reused by a later release. Old entries expire normally.
+Queued jobs carry the API build identity: a replacement worker rejects a job
+from another release (including unidentified legacy jobs) before reading any
+cartridge source, and asks the caller to reload and generate again. Local API
+and worker processes with no build identity can still run together.
 
 The manifest endpoint exposes `X-Render-Revision` through CORS, includes it in
 its ETag, and requires public-cache revalidation. The authored manifest is not
@@ -31,8 +35,8 @@ cannot replace cache identity. Missing server identity disables persistent
 reads and writes; an unidentified server uses a process-local cache namespace.
 
 This is release invalidation on **project load**, not live update notification
-for an already-open tab. Reload after a deployment. Mutable included files
-edited without a new build, cache separation between browser/native placement,
+for an already-open tab. Reload after a deployment. Live source edits
+without a new build, cache separation between browser/native placement,
 and artifacts' retention remain separate concerns; this is not a claim of
 immutable content addressing for every source dependency. Other image builders
 must supply unique build identities to enable safe persistent reuse.
