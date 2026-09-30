@@ -39,10 +39,15 @@ admission policy.
 
 The animated assembly grid uses a separate
 [assembly fetcher](../../apps/studio/src/services/domain/assemblyFetcher.ts), whose
-parameter cache is not covered by this budget. Its retained geometry and the
-[grid's per-render clones](../../apps/studio/src/components/viewer/AnimatedGrid.tsx)
-still need their own ownership and eviction repair. Do not interpret the main
-artifact loader's budget as an application-wide memory bound.
+parameter cache is not covered by this budget and still needs an eviction policy.
+The [grid](../../apps/studio/src/components/viewer/AnimatedGrid.tsx) owns one clone
+per cell and part, reuses it across color/wireframe changes, and disposes it when
+the assembly changes or the grid unmounts. Starting a replacement fetch clears
+the previous displayed assembly. The source geometry retained by the fetcher
+belongs to that cache and is not disposed by the grid. Active grid allocations
+still scale with the number of cells and parts; this is not an application-wide
+memory bound. [Grid regressions](../../apps/studio/src/components/viewer/AnimatedGrid.test.jsx)
+cover rerender reuse, replacement cleanup and unmount cleanup.
 
 Regression evidence lives in the [loader lifecycle tests](../../apps/studio/src/hooks/render/useWorkerLoader.test.js),
 [cache-budget tests](../../apps/studio/src/lib/stlPayloadCache.test.js) and
