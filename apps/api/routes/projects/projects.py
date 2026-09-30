@@ -125,7 +125,7 @@ def get_project_manifest(slug):
         resp = make_response("" if unchanged else body, 304 if unchanged else 200)
         resp.headers["Content-Type"] = "application/json"
         resp.headers["Cache-Control"] = "public, no-cache"
-        resp.headers["ETag"] = etag
+        resp.set_etag(etag)
         if revision:
             resp.headers["X-Render-Revision"] = revision
         return resp

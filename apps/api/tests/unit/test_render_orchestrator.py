@@ -544,19 +544,23 @@ def test_stream_part_timeout_default_is_180():
     assert render_orchestrator.RENDER_STREAM_PART_TIMEOUT_SECONDS == 180
 
 
-def test_stream_part_timeout_is_env_tunable(monkeypatch):
-    """RENDER_STREAM_PART_TIMEOUT_SECONDS overrides the default at import time."""
-    import importlib
+def test_stream_part_timeout_is_env_tunable():
+    """Import-time configuration must not replace classes held by other tests."""
+    import os
+    import subprocess
+    import sys
 
-    monkeypatch.setenv("RENDER_STREAM_PART_TIMEOUT_SECONDS", "240")
-    from services.engine import render_orchestrator
-
-    reloaded = importlib.reload(render_orchestrator)
-    try:
-        assert reloaded.RENDER_STREAM_PART_TIMEOUT_SECONDS == 240
-    finally:
-        monkeypatch.delenv("RENDER_STREAM_PART_TIMEOUT_SECONDS", raising=False)
-        importlib.reload(render_orchestrator)
+    # Reloading this module in-process replaces RenderPayloadError while route
+    # modules retain the old class. Later malformed requests then return 500
+    # instead of 400 solely because these tests ran first.
+    result = subprocess.run(
+        [sys.executable, "-c",
+         ("from services.engine.render_orchestrator import RENDER_STREAM_PART_TIMEOUT_SECONDS; "
+          "print(RENDER_STREAM_PART_TIMEOUT_SECONDS)")],
+        env={**os.environ, "RENDER_STREAM_PART_TIMEOUT_SECONDS": "240"},
+        check=True, capture_output=True, text=True, timeout=30,
+    )
+    assert result.stdout.strip() == "240"
 
 
 def test_stream_part_timeout_stays_under_subprocess_ceiling():
