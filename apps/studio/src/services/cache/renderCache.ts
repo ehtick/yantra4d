@@ -4,7 +4,7 @@ import { bearerHeaderForSameOrigin } from '../../lib/januaSso'
  *
  * DB:    "yantra4d-render-cache", version 1
  * Store: "renders"
- * Key:   SHA-256 hex of JSON.stringify({ project, mode, ...sorted_params, format })
+ * Key:   SHA-256 of canonical JSON { project, mode, params, format, revision }
  * Value: { parts: [{ type, arrayBuffer }], timestamp }
  * TTL:   24 hours
  * Max:   500 entries (LRU eviction by timestamp)
@@ -55,7 +55,11 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 async function hashKey(obj: Record<string, unknown>): Promise<string> {
-  const raw = JSON.stringify(obj, Object.keys(obj).sort())
+  const raw = JSON.stringify(obj, (_key, value) =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+      : value,
+  )
   const buf = new TextEncoder().encode(raw)
   const hash = await crypto.subtle.digest('SHA-256', buf)
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
@@ -68,9 +72,10 @@ export async function makeCacheKey(
   project: string,
   mode: string,
   params: Record<string, unknown>,
-  format: string = 'stl'
+  format: string = 'stl',
+  revision: string = ''
 ): Promise<string> {
-  return hashKey({ project, mode, ...params, format })
+  return hashKey({ project, mode, params, format, revision, client: import.meta.env.VITE_RENDER_BUILD_ID || import.meta.url })
 }
 
 /**

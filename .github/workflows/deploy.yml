@@ -356,6 +356,8 @@ jobs:
         with:
           context: .
           file: ./apps/api/Dockerfile
+          build-args: |
+            RENDER_BUILD_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -485,6 +487,7 @@ jobs:
           provenance: false
           sbom: false
           build-args: |
+            VITE_RENDER_BUILD_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
             VITE_API_BASE=https://api.yantra4d.com
             VITE_JANUA_BASE_URL=${{ secrets.JANUA_BASE_URL }}
             VITE_JANUA_CLIENT_ID=${{ steps.janua_client.outputs.client_id }}
@@ -755,6 +758,7 @@ jobs:
           provenance: false
           sbom: false
           build-args: |
+            VITE_RENDER_BUILD_ID=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
             VITE_API_BASE=https://api.yantra4d.com
             VITE_JANUA_BASE_URL=${{ secrets.JANUA_BASE_URL }}
             VITE_JANUA_CLIENT_ID=jnc_-v2RiP_TMO-XSExftpCh41K46xeszlKh
@@ -870,24 +874,22 @@ jobs:
   verify-deploy:
     name: Post-Deploy Health Check
     runs-on: ${{ vars.DEPLOY_RUNNER_LABEL != '' && vars.DEPLOY_RUNNER_LABEL || 'madfam-runners-blue' }}
-    needs: [commit-digests]
-    # always() is load-bearing: on a push that builds only one service the other
-    # build jobs are skipped, and GitHub propagates "skipped" down the needs
-    # chain to every dependent that does not use a status-check function — so
-    # without it this job was skipped on every backend-only deploy even though
-    # commit-digests had succeeded (deploy #547, 2026-09-02).
+    needs: [commit-digests, build-backend]
+    timeout-minutes: 10
+    # A skipped build is normal for frontend-only publication.
     if: always() && needs.commit-digests.result == 'success'
     steps:
-      - name: Wait for backend health
+      - uses: actions/checkout@v4
+      - name: Wait for the serving renderer release
+        env:
+          BACKEND_RESULT: ${{ needs.build-backend.result }}
+          RENDER_BUILD_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          for i in $(seq 1 12); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.yantra4d.com/api/health)
-            [ "$STATUS" = "200" ] && echo "Backend healthy" && exit 0
-            echo "Attempt $i: status=$STATUS, retrying in 30s..."
-            sleep 30
-          done
-          echo "Backend health check failed after 6 minutes"
-          exit 1
+          EXPECTED=""
+          if [ "$BACKEND_RESULT" = success ]; then
+            EXPECTED="$RENDER_BUILD_ID"
+          fi
+          python3 scripts/ci/wait_for_render_release.py --expected-revision "$EXPECTED"
 
   lifecycle-events:
     name: Report Lifecycle Events

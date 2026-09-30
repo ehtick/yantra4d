@@ -520,6 +520,9 @@ components:
                 type: string
         debug_mode:
           type: boolean
+        render_revision:
+          type: string
+          description: Public renderer build identity; empty for an unidentified local build.
       required: [status, checks]
 
 paths:
@@ -533,6 +536,26 @@ paths:
       responses:
         "200":
           description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/health/ready:
+    get:
+      tags: [health]
+      summary: Readiness of the serving renderer
+      description: Includes the public build revision; responses require cache revalidation.
+      operationId: rendererReadiness
+      responses:
+        "200":
+          description: Ready to serve (optional subsystems may be degraded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: A required subsystem is unavailable
           content:
             application/json:
               schema:

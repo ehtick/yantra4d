@@ -20,7 +20,7 @@ function TestConsumer() {
   const {
     loading, manifest, getMode, getParametersForMode, getDefaultParams, getDefaultColors, getLabel,
     getCameraViews, getGroupLabel, getViewerConfig, getEstimateConstants, projectSlug,
-    projects, switchProject, ready, manifestError,
+    projects, switchProject, ready, manifestError, renderRevision,
   } = useManifest()
   if (loading) return <div data-testid="loading">loading</div>
 
@@ -43,6 +43,7 @@ function TestConsumer() {
 
   return (
     <div>
+      <span data-testid="render-revision">{renderRevision}</span>
       <span data-testid="ready">{String(ready)}</span>
       <span data-testid="manifest-error">{manifestError}</span>
       <span data-testid="bin-id">{binMode?.id}</span>
@@ -320,4 +321,15 @@ describe('ManifestProvider', () => {
     expect(screen.getByTestId('projects-count').textContent).toBe('14')
     expect(screen.getByTestId('project-slug').textContent).toBe('gridfinity')
   })
+})
+
+
+it('carries server render identity without changing the authored manifest', async () => {
+  vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve({
+    ok: true,
+    headers: new Headers({ 'X-Render-Revision': 'release-two' }),
+    json: async () => url.endsWith('/api/projects') ? [] : fallbackManifest,
+  })))
+  render(<ManifestProvider><TestConsumer /></ManifestProvider>)
+  await waitFor(() => expect(screen.getByTestId('render-revision')).toHaveTextContent('release-two'))
 })

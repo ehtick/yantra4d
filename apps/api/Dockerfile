@@ -86,6 +86,11 @@ RUN mkdir -p /usr/local/share/fonts/yantra4d && \
     find /app/projects /app/private-projects -path '*/fonts/*.otf' -exec cp {} /usr/local/share/fonts/yantra4d/ \; && \
     fc-cache -f /usr/local/share/fonts/yantra4d 2>/dev/null || true
 
+# Build identity partitions artifacts after source, library, font or kernel changes.
+# Publishers supply a unique id even when rebuilding the same source SHA.
+ARG RENDER_BUILD_ID
+ENV RENDER_BUILD_ID=${RENDER_BUILD_ID}
+
 # Environment configuration
 ENV FLASK_APP=app.py
 ENV FLASK_DEBUG=false

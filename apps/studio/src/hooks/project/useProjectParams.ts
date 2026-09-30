@@ -125,7 +125,7 @@ function safeParse<T>(key: string, fallback: T): T {
  */
 export function useProjectParams({ viewerRef }: UseProjectParamsOptions) {
   const { t } = useLanguage()
-  const { manifest, getDefaultParams, getDefaultColors, getLabel, getCameraViews, projectSlug, presets } = useManifest()
+  const { manifest, getDefaultParams, getDefaultColors, getLabel, getCameraViews, projectSlug, presets, renderRevision } = useManifest()
 
   const location = useLocation()
   const navigate = useNavigate()
@@ -330,12 +330,12 @@ export function useProjectParams({ viewerRef }: UseProjectParamsOptions) {
 
   // Render cache key
   const getCacheKey = useCallback((m: string, p: Record<string, unknown>): string => {
-    const keyObj: Record<string, unknown> = { mode: m }
+    const keyObj: Record<string, unknown> = {}
     for (const param of manifest.parameters) {
       if (p[param.id] !== undefined) keyObj[param.id] = p[param.id]
     }
-    return JSON.stringify(keyObj)
-  }, [manifest])
+    return JSON.stringify({ project: projectSlug, revision: renderRevision, format: exportFormat, mode: m, params: keyObj })
+  }, [manifest, projectSlug, renderRevision, exportFormat])
 
   // Render hook
   const {
@@ -354,7 +354,7 @@ export function useProjectParams({ viewerRef }: UseProjectParamsOptions) {
     handleCancelGenerate,
     handleConfirmRender,
     handleCancelRender,
-  } = useRender({ mode, params, manifest: manifest as Parameters<typeof useRender>[0]['manifest'], t, getCacheKey, project: projectSlug, exportFormat })
+  } = useRender({ mode, params, manifest: manifest as Parameters<typeof useRender>[0]['manifest'], t, getCacheKey, project: projectSlug, exportFormat, renderRevision })
 
   // Auto-scroll console
   useEffect(() => {

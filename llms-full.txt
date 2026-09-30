@@ -46,3 +46,7 @@ gap or incident link.
 These files are maintained by `internal-devops/scripts/sync-agent-docs.py`.
 If repo-specific long-form agent guidance is needed, put it in `AGENTS.md`,
 not `CLAUDE.md`.
+
+## Render release integrity
+
+[Cache identity and artifact storage](docs/operations/render-artifact-storage.md#cache-identity-across-releases) documents API/worker and Studio build namespaces, manifest revalidation and the limits of project-load invalidation. [README](README.md) is the platform overview. Keep runtime revision metadata separate from authored commons manifests.
