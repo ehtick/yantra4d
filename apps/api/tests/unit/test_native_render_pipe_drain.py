@@ -1,4 +1,5 @@
 """Real pipes must be drained while cancellable native renderers are running."""
+import json
 import sys
 from unittest.mock import Mock
 
@@ -24,6 +25,18 @@ def test_output_larger_than_pipe_capacity_completes(engine):
     assert success, 'the child only writes output and exits; waiting before reading deadlocks it'
     assert output.endswith('e'*262144)
     assert len(output) == (524288 if engine is cadquery_engine else 262144)
+
+
+def test_streaming_stdout_cannot_block_stderr_or_completion(engine):
+    command = [sys.executable, '-c',
+               ('import sys; sys.stdout.write("o"*262144+"\\n"); sys.stdout.flush(); '
+                'sys.stderr.write("diagnostic complete\\n"); sys.stderr.flush()')]
+    events = [json.loads(event) for event in
+              engine.stream_render(command, 'fixture', 0, 100, 1, 1)]
+    assert events[-1]['event'] == 'part_done', events[-1]
+    assert any(event.get('line') == 'diagnostic complete' for event in events)
+    manager = engine._cq_process_manager if engine is cadquery_engine else engine._process_manager
+    assert manager._active_process is None
 
 
 def test_cancellation_still_interrupts_a_verbose_child(engine, monkeypatch):

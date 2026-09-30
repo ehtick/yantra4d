@@ -340,10 +340,12 @@ The cancellable OpenSCAD and CadQuery subprocess paths drain stdout and stderr
 while the renderer runs. Waiting for exit before reading can fill an OS pipe
 and deadlock a valid render until its timeout. The shared process utility uses
 timed `communicate()` calls to drain output while checking cancellation; the
-existing render deadline and cleanup remain in force.
+existing render deadline and cleanup remain in force. OpenSCAD streaming discards
+unused stdout instead of creating an unread pipe; its stderr progress stream
+and output geometry file remain unchanged.
 
 [Real subprocess regressions](../../apps/api/tests/unit/test_native_render_pipe_drain.py)
 write more than pipe capacity and exercise cancellation and timeout. This repair
 does not establish process-tree isolation, a diagnostic-output memory budget,
-or geometric correctness. The warm CadQuery pool and streaming paths retain
-their existing implementations.
+or geometric correctness. The warm CadQuery pool and CadQuery streaming path
+retain their existing implementations.

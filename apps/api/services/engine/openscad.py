@@ -500,10 +500,12 @@ def stream_render(cmd: list, part: str, part_base: float, part_weight: float, in
     })
 
     try:
-        # Run with Popen to stream stderr
+        # Geometry goes to the output file and progress comes from stderr.
+        # Never create an unread stdout pipe: verbose children can fill it and
+        # deadlock before writing progress or exiting.
         logger.info(f"Streaming OpenSCAD (CWD: {os.getcwd()}): {_sanitize_cmd_for_log(cmd)}")
         process = _process_manager.start(
-            subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=_openscad_env(scad_path))
+            subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, env=_openscad_env(scad_path))
         )
 
         kill_timer = threading.Timer(RENDER_TIMEOUT_S, lambda: process.kill())
