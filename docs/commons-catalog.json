@@ -26905,7 +26905,16 @@
           "modes": [
             "bolt_cq",
             "nut_cq",
-            "washer"
+            "washer",
+            "bolt",
+            "nut"
+          ],
+          "visible_in_modes": [
+            "bolt_cq",
+            "nut_cq",
+            "washer",
+            "bolt",
+            "nut"
           ]
         },
         "length": {
@@ -26914,7 +26923,12 @@
           "max": 120,
           "step": 1,
           "modes": [
-            "bolt_cq"
+            "bolt_cq",
+            "bolt"
+          ],
+          "visible_in_modes": [
+            "bolt_cq",
+            "bolt"
           ]
         },
         "pitch": {
@@ -26924,7 +26938,15 @@
           "step": 0.05,
           "modes": [
             "bolt_cq",
-            "nut_cq"
+            "nut_cq",
+            "bolt",
+            "nut"
+          ],
+          "visible_in_modes": [
+            "bolt_cq",
+            "nut_cq",
+            "bolt",
+            "nut"
           ]
         },
         "thread_enabled": {
@@ -26932,11 +26954,19 @@
           "modes": [
             "bolt_cq",
             "nut_cq"
+          ],
+          "visible_in_modes": [
+            "bolt_cq",
+            "nut_cq"
           ]
         },
         "thread_style": {
           "type": "select",
           "modes": [
+            "bolt_cq",
+            "nut_cq"
+          ],
+          "visible_in_modes": [
             "bolt_cq",
             "nut_cq"
           ],
@@ -26953,11 +26983,18 @@
           "modes": [
             "nut_cq",
             "washer"
+          ],
+          "visible_in_modes": [
+            "nut_cq",
+            "washer"
           ]
         },
         "head_style": {
           "type": "select",
           "modes": [
+            "bolt_cq"
+          ],
+          "visible_in_modes": [
             "bolt_cq"
           ],
           "options": [
@@ -26971,6 +27008,9 @@
           "modes": [
             "nut_cq"
           ],
+          "visible_in_modes": [
+            "nut_cq"
+          ],
           "options": [
             "hex",
             "square",
@@ -26980,6 +27020,9 @@
         "washer_type": {
           "type": "select",
           "modes": [
+            "washer"
+          ],
+          "visible_in_modes": [
             "washer"
           ],
           "options": [
@@ -26996,8 +27039,7 @@
             "bolt"
           ],
           "visible_in_modes": [
-            "bolt",
-            "nut"
+            "bolt"
           ]
         },
         "head_diameter": {
@@ -27009,8 +27051,7 @@
             "bolt"
           ],
           "visible_in_modes": [
-            "bolt",
-            "nut"
+            "bolt"
           ]
         },
         "head_height": {
@@ -27022,8 +27063,7 @@
             "bolt"
           ],
           "visible_in_modes": [
-            "bolt",
-            "nut"
+            "bolt"
           ]
         },
         "nut_style_id": {
@@ -27035,7 +27075,6 @@
             "nut"
           ],
           "visible_in_modes": [
-            "bolt",
             "nut"
           ]
         },
@@ -27048,7 +27087,6 @@
             "nut"
           ],
           "visible_in_modes": [
-            "bolt",
             "nut"
           ]
         },
@@ -27061,7 +27099,6 @@
             "nut"
           ],
           "visible_in_modes": [
-            "bolt",
             "nut"
           ]
         },

@@ -35,6 +35,8 @@ Render caches are scoped to published renderer builds; see [release cache identi
 
 [Native renderer output and cancellation](docs/guides/troubleshooting.md#native-renderer-stalls-after-substantial-output) explains pipe draining, deadlines and remaining isolation limits.
 
+[Mode-specific controls](docs/guides/troubleshooting.md#controls-that-do-not-affect-the-selected-mode) documents the commons-owned visibility contract and actual-pin fastener regression.
+
 [Publication source acceptance](docs/operations/release-source-gate.md) describes the exact-main CI gate, stale-source pin refusal and runtime verification boundary.
 
 ## 🛠️ The Stack
