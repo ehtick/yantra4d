@@ -69,7 +69,7 @@ Recomputed over **502 cartridges** (`docs/commons-catalog.json` `counts.cartridg
 | Cartridges declaring ≥1 `camera_views` entry | 458 | 502 | 91.2% | 293 / 326 = 89.9% | +1.4 pp |
 | Curated camera angles per cartridge | 1218 | 502 | 2.43 | 883 / 326 = 2.71 | -0.28 |
 | Cartridges shipping ≥1 preset | 472 | 502 | 94.0% | 303 / 326 = 92.9% | +1.1 pp |
-| Proven configurations (presets) per cartridge | 1548 | 502 | 3.08 | 1021 / 326 = 3.13 | -0.05 |
+| Proven configurations (presets) per cartridge | 1551 | 502 | 3.09 | 1021 / 326 = 3.13 | -0.04 |
 | Cartridges declaring ≥1 constraint | 502 | 502 | 100.0% | 287 / 326 = 88.0% | +12.0 pp |
 | Bilingual constraints per cartridge | 1095 | 502 | 2.18 | 555 / 326 = 1.70 | +0.48 |
 | Cartridges carrying `hyperobject.material_awareness` | 490 | 502 | 97.6% | 310 / 326 = 95.1% | +2.5 pp |
