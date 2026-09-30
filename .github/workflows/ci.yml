@@ -203,6 +203,12 @@ jobs:
         working-directory: apps/studio
     steps:
       - uses: actions/checkout@v4
+      - name: Initialize the pinned commons for consumer contract tests
+        # ManifestProvider.fasteners.test.jsx reads the actual cartridge pin.
+        # Only its public root is needed; do not clone nested CAD libraries or
+        # private project mounts for a Studio test.
+        working-directory: ${{ github.workspace }}
+        run: git submodule update --init --depth=1 -- projects
       - uses: actions/setup-node@v4
         with:
           node-version: 22
