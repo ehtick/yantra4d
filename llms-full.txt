@@ -54,3 +54,7 @@ not `CLAUDE.md`.
 Shared configuration links preserve Unicode text through JSON escapes and retain legacy decoding. See the [share-link contract and limits](docs/guides/troubleshooting.md#shareable-urls).
 
 Viewer artifact loading has independent completion and lifecycle guarantees. See [blank-viewer diagnostics and shared STL task ownership](docs/guides/troubleshooting.md#blank-viewer--no-stl); render completion alone does not prove canvas delivery.
+
+## Native render output
+
+[Native renderer output and cancellation](docs/guides/troubleshooting.md#native-renderer-stalls-after-substantial-output) explains pipe draining, deadlines and remaining isolation limits.

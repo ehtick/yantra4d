@@ -7,6 +7,7 @@ import logging
 import os
 import subprocess
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -76,3 +77,24 @@ class ProcessManager:
 
         self.clear()
         return True
+
+
+def communicate_cancellable(
+    process: subprocess.Popen,
+    is_cancelled: Callable[[], bool],
+    cancel: Callable[[], bool],
+) -> tuple[str, str | None]:
+    """Drain both pipes while retaining cancellation and the caller's deadline.
+
+    Waiting for exit before communicate() deadlocks when a renderer fills its
+    stdout/stderr pipe. Repeated timed communicate() calls keep draining and
+    retain collected output across TimeoutExpired, while polling cancellation.
+    The caller continues to own its kill timer and process-manager cleanup.
+    """
+    while True:
+        if is_cancelled():
+            cancel()
+        try:
+            return process.communicate(timeout=0.05)
+        except subprocess.TimeoutExpired:
+            continue

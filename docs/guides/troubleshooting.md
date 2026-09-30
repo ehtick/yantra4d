@@ -333,3 +333,17 @@ warning saying so. In production the same path is the bug the bundle exists to
 fix: nginx's `try_files … /index.html` answers `/scad/anything` with the SPA's
 own HTML at **200 OK**, so the fallback explicitly refuses a body beginning with
 `<!doctype` rather than writing a page of HTML into the virtual FS as SCAD.
+
+### Native renderer stalls after substantial output
+
+The cancellable OpenSCAD and CadQuery subprocess paths drain stdout and stderr
+while the renderer runs. Waiting for exit before reading can fill an OS pipe
+and deadlock a valid render until its timeout. The shared process utility uses
+timed `communicate()` calls to drain output while checking cancellation; the
+existing render deadline and cleanup remain in force.
+
+[Real subprocess regressions](../../apps/api/tests/unit/test_native_render_pipe_drain.py)
+write more than pipe capacity and exercise cancellation and timeout. This repair
+does not establish process-tree isolation, a diagnostic-output memory budget,
+or geometric correctness. The warm CadQuery pool and streaming paths retain
+their existing implementations.

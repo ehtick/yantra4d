@@ -7,11 +7,10 @@ import logging
 import os
 import subprocess
 import threading
-import time
 from collections.abc import Callable
 
 from services.engine.cq_pool import cq_pool
-from services.engine.render_engine import RENDER_TIMEOUT_S, ProcessManager
+from services.engine.render_engine import RENDER_TIMEOUT_S, ProcessManager, communicate_cancellable
 from utils.project_resolver import project_roots
 
 logger = logging.getLogger(__name__)
@@ -123,13 +122,9 @@ def run_render(
         kill_timer = threading.Timer(RENDER_TIMEOUT_S, lambda: process.kill())
         kill_timer.start()
         try:
-            while process.poll() is None:
-                if is_cancelled():
-                    _cq_process_manager.cancel()
-                    break
-                time.sleep(0.05)
-
-            stdout_text = process.communicate()[0] or ""
+            stdout_text = communicate_cancellable(
+                process, is_cancelled, _cq_process_manager.cancel,
+            )[0] or ""
         finally:
             kill_timer.cancel()
             _cq_process_manager.clear()
