@@ -16,6 +16,12 @@ asks it instead. See [Operator flip runbook](#operator-flip-runbook).
 
 The image publisher assigns `RENDER_BUILD_ID` to the API/worker image and
 `VITE_RENDER_BUILD_ID` to Studio, using the source SHA, build run and attempt.
+The readiness response exposes the same public `render_revision`. After a backend
+build, the publisher waits for readiness from that exact build; an HTTP200 from
+the previous image cannot accept its replacement. Frontend-only publication
+checks backend availability and does not claim frontend image convergence.
+Independent production image and user-journey checks remain required.
+
 Rebuilding the same source produces a distinct namespace because fonts, kernels
 and dependency images can change independently of a cartridge's root script.
 The server's memory/Redis keys include this identity; generated artifact names
