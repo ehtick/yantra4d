@@ -211,3 +211,5 @@ Yantra4D is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)
 **Join the movement. Print the Hyperobjects.**
 
 Shared configuration links preserve Unicode text through JSON escapes and retain legacy decoding. See the [share-link contract and limits](docs/guides/troubleshooting.md#shareable-urls).
+
+Viewer artifact loading has independent completion and lifecycle guarantees. See [blank-viewer diagnostics and shared STL task ownership](docs/guides/troubleshooting.md#blank-viewer--no-stl); render completion alone does not prove canvas delivery.

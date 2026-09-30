@@ -86,6 +86,19 @@ brew install openscad
 - OpenSCAD syntax error in `.scad` file — look for `ERROR:` lines in logs
 - CORS issue — backend not accepting requests from studio origin
 
+The viewer fetches and parses artifacts after the render job finishes. A completed
+render log therefore does not prove that geometry reached the canvas. Inspect
+artifact HTTP responses and `[WorkerLoader]` errors separately from render logs.
+
+STL tasks are shared by URL and owned by the loader: a component unmount or
+StrictMode effect replay must not abandon other consumers of the same task.
+Changing URL or format hides prior geometry and ignores late results. Worker
+errors, deserialization failures, dispatch failures and the 120-second timeout
+settle pending work; discarding a worker releases all its tasks so a later mount
+can retry. Successful same-URL geometry remains cached for the page lifetime;
+this contract does not establish a bounded geometry-memory budget or diagnose
+GPU/context failures. See [render artifact identity](../operations/render-artifact-storage.md#cache-identity-across-releases).
+
 ## Network & CORS
 
 ### CORS Errors

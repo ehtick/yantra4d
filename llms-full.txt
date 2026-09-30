@@ -52,3 +52,5 @@ not `CLAUDE.md`.
 [Cache identity and artifact storage](docs/operations/render-artifact-storage.md#cache-identity-across-releases) documents API/worker and Studio build namespaces, manifest revalidation and the limits of project-load invalidation. [README](README.md) is the platform overview. Keep runtime revision metadata separate from authored commons manifests.
 
 Shared configuration links preserve Unicode text through JSON escapes and retain legacy decoding. See the [share-link contract and limits](docs/guides/troubleshooting.md#shareable-urls).
+
+Viewer artifact loading has independent completion and lifecycle guarantees. See [blank-viewer diagnostics and shared STL task ownership](docs/guides/troubleshooting.md#blank-viewer--no-stl); render completion alone does not prove canvas delivery.
